@@ -23,7 +23,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth')->plainTextToken;
 
         return response()->json([
-            'message' => 'تم إنشاء الحساب، برجاء إدخال كود التحقق المرسل إلى بريدك الإلكتروني.',
+            'message' => __('auth.register_success'),
             'data'    => [
                 'user'  => new UserResource($user),
                 'token' => $token,
@@ -41,7 +41,7 @@ class AuthController extends Controller
         );
 
         return response()->json([
-            'message' => 'تم تفعيل البريد الإلكتروني بنجاح.',
+            'message' => __('auth.email_verified'),
             'data'    => new UserResource($user),
         ]);
     }

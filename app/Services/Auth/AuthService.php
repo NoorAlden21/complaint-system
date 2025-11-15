@@ -55,13 +55,13 @@ class AuthService
 
         if (!$verificationCode || $verificationCode->isExpired()) {
             throw ValidationException::withMessages([
-                'code' => ['لا يوجد كود تحقق صالح أو انتهت صلاحيته، برجاء طلب كود جديد.'],
+                'code' => [__('auth.no_valid_code')],
             ]);
         }
 
         if (!Hash::check($code, $verificationCode->code)) {
             throw ValidationException::withMessages([
-                'code' => ['كود التحقق غير صحيح.'],
+                'code' => [__('auth.invalid_code')],
             ]);
         }
 
