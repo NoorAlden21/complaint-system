@@ -24,6 +24,8 @@ class ComplaintCategory extends Model
         if ($locale === 'ar') {
             return $this->label_ar ?: $this->label_en;
         }
+
+        return $this->label_en ?: $this->label_ar;
     }
 
     public function getDescriptionAttribute(): ?string
@@ -33,6 +35,8 @@ class ComplaintCategory extends Model
         if ($locale === 'ar') {
             return $this->description_ar ?? $this->description_en;
         }
+
+        return $this->description_en ?? $this->description_ar;
     }
 
     public function complaints()

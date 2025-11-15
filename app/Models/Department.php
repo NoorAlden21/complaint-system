@@ -24,6 +24,8 @@ class Department extends Model
         if ($locale === 'ar') {
             return $this->name_ar ?: $this->name_en;
         }
+
+        return $this->name_en ?: $this->name_ar;
     }
 
     public function getDescriptionAttribute(): ?string
@@ -33,6 +35,8 @@ class Department extends Model
         if ($locale === 'ar') {
             return $this->description_ar ?? $this->description_en;
         }
+
+        return $this->description_en ?? $this->description_ar;
     }
 
     public function complaints()
