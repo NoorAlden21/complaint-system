@@ -2,45 +2,57 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
-public function boot(): void
+class RouteServiceProvider extends ServiceProvider
 {
-    // limiter لمحاولات تسجيل الدخول
-    RateLimiter::for('auth-login', function (Request $request) {
-        $key = strtolower($request->input('email')) ?: $request->ip();
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
 
-        return [
-            // 5 محاولات في الدقيقة لكل إيميل/IP
-            Limit::perMinute(5)->by($key),
-        ];
-    });
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        $this->configureRateLimiting();
+    }
 
-    // limiter لارسال OTP (تفعيل الإيميل + forgot password)
-    RateLimiter::for('otp-send', function (Request $request) {
-        $key = strtolower($request->input('email')) ?: $request->ip();
+    /**
+     * Define the application's rate limiters.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('auth-login', function (Request $request) {
+            $key = strtolower($request->input('email')) ?: $request->ip();
 
-        return [
-            // 3 مرات في الدقيقة
-            Limit::perMinute(3)->by($key),
-            // وبحد أقصى 10 مرات في الساعة لنفس الإيميل
-            Limit::perHour(10)->by($key . '|hour'),
-        ];
-    });
+            return [
+                Limit::perMinute(5)->by($key),
+            ];
+        });
 
-    // limiter لمحاولة reset password بالـ OTP
-    RateLimiter::for('otp-verify', function (Request $request) {
-        $key = strtolower($request->input('email')) ?: $request->ip();
+        RateLimiter::for('otp-send', function (Request $request) {
+            $key = strtolower($request->input('email')) ?: $request->ip();
 
-        return [
-            // 5 محاولات في 15 دقيقة لنفس الإيميل
-            Limit::perMinutes(15, 5)->by($key),
-        ];
-    });
+            return [
+                Limit::perMinute(3)->by($key),
+                Limit::perHour(10)->by($key . '|hour'),
+            ];
+        });
 
-    // لو عندك أشياء ثانية تبي تحدها...
+        RateLimiter::for('otp-verify', function (Request $request) {
+            $key = strtolower($request->input('email')) ?: $request->ip();
+
+            return [
+                Limit::perMinutes(15, 5)->by($key),
+            ];
+        });
+    }
 }
