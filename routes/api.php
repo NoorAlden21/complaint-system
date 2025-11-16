@@ -13,6 +13,7 @@ Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 // protected
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+    Route::post('/email/resend-verification', [AuthController::class, 'resendVerificationEmail']);
 
     Route::get('/complaints/meta', [ComplaintController::class, 'meta']);
 

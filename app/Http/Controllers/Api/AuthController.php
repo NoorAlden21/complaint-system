@@ -10,7 +10,9 @@ use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResendVerificationEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+
 
 class AuthController extends Controller
 {
@@ -59,6 +61,17 @@ class AuthController extends Controller
         return response()->json([
             'message' => __('auth.email_verified'),
             'data'    => new UserResource($user),
+        ]);
+    }
+
+    public function resendVerificationEmail(ResendVerificationEmailRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $this->authService->resendEmailVerification($user);
+
+        return response()->json([
+            'message' => __('auth.verification_email_resent'),
         ]);
     }
 

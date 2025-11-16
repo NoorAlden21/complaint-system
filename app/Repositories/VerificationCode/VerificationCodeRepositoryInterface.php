@@ -18,4 +18,6 @@ interface VerificationCodeRepositoryInterface
     public function getLatestActiveCode(User $user, string $type): ?VerificationCode;
 
     public function markAsUsed(VerificationCode $verificationCode): VerificationCode;
+
+    public function invalidateActiveCodes(User $user, string $type): int;
 }

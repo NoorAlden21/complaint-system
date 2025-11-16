@@ -21,12 +21,12 @@ class AuthService
 
     public function registerCitizen(array $data): User
     {
-        return DB::transaction(function () use ($data) {
+        [$user, $rawCode] = DB::transaction(function () use ($data) {
             $user = $this->users->create([
-                'name'     => $data['name'],
+                'name'         => $data['name'],
                 'phone_number' => $data['phone_number'],
-                'email'    => $data['email'],
-                'password' => $data['password'],
+                'email'        => $data['email'],
+                'password'     => $data['password'],
             ]);
 
             $user->assignRole('citizen');
@@ -40,11 +40,14 @@ class AuthService
                 expiresAt: now()->addMinutes(60),
             );
 
-            $user->notify(new VerifyEmailCodeNotification($rawCode));
-
-            return $user;
+            return [$user, $rawCode];
         });
+
+        $user->notify(new VerifyEmailCodeNotification($rawCode));
+
+        return $user;
     }
+
 
     public function login(array $credentials): array
     {
@@ -101,6 +104,29 @@ class AuthService
 
         return $user;
     }
+
+    public function resendEmailVerification(User $user): void
+    {
+        if ($user->email_verified_at) {
+            throw ValidationException::withMessages([
+                'email' => [__('auth.email_already_verified')],
+            ]);
+        }
+
+        $this->verificationCodes->invalidateActiveCodes($user, 'email_verification');
+
+        $rawCode = $this->generateCode();
+
+        $this->verificationCodes->createForUser(
+            user: $user,
+            type: 'email_verification',
+            hashedCode: Hash::make($rawCode),
+            expiresAt: now()->addMinutes(60),
+        );
+
+        $user->notify(new VerifyEmailCodeNotification($rawCode));
+    }
+
 
     public function sendPasswordResetCode(string $email): void
     {

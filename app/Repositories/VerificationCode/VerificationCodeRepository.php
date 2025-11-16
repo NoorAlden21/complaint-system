@@ -38,4 +38,16 @@ class VerificationCodeRepository implements VerificationCodeRepositoryInterface
 
         return $verificationCode;
     }
+
+    public function invalidateActiveCodes(User $user, string $type): int
+    {
+        return VerificationCode::query()
+            ->where('user_id', $user->id)
+            ->where('type', $type)
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->update([
+                'used_at' => now(),
+            ]);
+    }
 }
