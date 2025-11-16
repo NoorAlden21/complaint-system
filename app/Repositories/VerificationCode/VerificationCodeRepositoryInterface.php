@@ -10,11 +10,12 @@ interface VerificationCodeRepositoryInterface
 {
     public function createForUser(
         User $user,
+        string $type,
         string $hashedCode,
         DateTimeInterface $expiresAt
     ): VerificationCode;
 
-    public function getLatestActiveCode(User $user): ?VerificationCode;
+    public function getLatestActiveCode(User $user, string $type): ?VerificationCode;
 
     public function markAsUsed(VerificationCode $verificationCode): VerificationCode;
 }

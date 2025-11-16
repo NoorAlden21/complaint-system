@@ -8,6 +8,9 @@ use App\Http\Requests\Auth\VerifyEmailRequest;
 use App\Http\Resources\UserResource;
 use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 
 class AuthController extends Controller
 {
@@ -31,6 +34,19 @@ class AuthController extends Controller
         ], 201);
     }
 
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $result = $this->authService->login($request->validated());
+
+        return response()->json([
+            'message' => __('auth.login_success'),
+            'data'    => [
+                'user'  => new UserResource($result['user']),
+                'token' => $result['token'],
+            ],
+        ]);
+    }
+
     public function verifyEmail(VerifyEmailRequest $request): JsonResponse
     {
         $user = $request->user();
@@ -43,6 +59,34 @@ class AuthController extends Controller
         return response()->json([
             'message' => __('auth.email_verified'),
             'data'    => new UserResource($user),
+        ]);
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $this->authService->sendPasswordResetCode(
+            $request->validated()['email']
+        );
+
+        return response()->json([
+            'message' => __('auth.password_reset_code_sent'),
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $result = $this->authService->resetPassword(
+            $request->validated()['email'],
+            $request->validated()['code'],
+            $request->validated()['password'],
+        );
+
+        return response()->json([
+            'message' => __('auth.password_reset_success'),
+            'data'    => [
+                'user'  => new UserResource($result['user']),
+                'token' => $result['token'],
+            ],
         ]);
     }
 }

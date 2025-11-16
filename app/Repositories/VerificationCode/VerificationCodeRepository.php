@@ -10,19 +10,22 @@ class VerificationCodeRepository implements VerificationCodeRepositoryInterface
 {
     public function createForUser(
         User $user,
+        string $type,
         string $hashedCode,
         DateTimeInterface $expiresAt
     ): VerificationCode {
         return VerificationCode::create([
             'user_id'    => $user->id,
+            'type'       => $type,
             'code'       => $hashedCode,
             'expires_at' => $expiresAt,
         ]);
     }
 
-    public function getLatestActiveCode(User $user): ?VerificationCode
+    public function getLatestActiveCode(User $user, string $type): ?VerificationCode
     {
         return VerificationCode::where('user_id', $user->id)
+            ->where('type', $type)
             ->whereNull('used_at')
             ->orderByDesc('id')
             ->first();

@@ -15,6 +15,8 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
+            $table->string('type', 50);
+
             $table->string('code');
             $table->timestamp('expires_at');
             $table->timestamp('used_at')->nullable();

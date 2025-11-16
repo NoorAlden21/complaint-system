@@ -11,6 +11,7 @@ class VerificationCode extends Model
 
     protected $fillable = [
         'user_id',
+        'type',
         'code',
         'expires_at',
         'used_at',

@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Notifications\PasswordResetCodeNotification;
 use App\Notifications\VerifyEmailCodeNotification;
 use App\Repositories\User\UserRepositoryInterface;
 use App\Repositories\VerificationCode\VerificationCodeRepositoryInterface;
@@ -34,6 +35,7 @@ class AuthService
 
             $this->verificationCodes->createForUser(
                 user: $user,
+                type: 'email_verification',
                 hashedCode: Hash::make($rawCode),
                 expiresAt: now()->addMinutes(60),
             );
@@ -44,6 +46,31 @@ class AuthService
         });
     }
 
+    public function login(array $credentials): array
+    {
+        $user = $this->users->findByEmail($credentials['email']);
+
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => [__('auth.invalid_credentials')],
+            ]);
+        }
+
+        if (!$user->email_verified_at) {
+            throw ValidationException::withMessages([
+                'email' => [__('auth.email_not_verified')],
+            ]);
+        }
+
+        $token = $user->createToken('auth')->plainTextToken;
+
+        return [
+            'user'  => $user,
+            'token' => $token,
+        ];
+    }
+
+
     public function verifyEmail(User $user, string $code): User
     {
         if ($user->email_verified_at) {
@@ -51,7 +78,7 @@ class AuthService
         }
 
         $verificationCode = $this->verificationCodes
-            ->getLatestActiveCode($user);
+            ->getLatestActiveCode($user, 'email_verification');
 
         if (!$verificationCode || $verificationCode->isExpired()) {
             throw ValidationException::withMessages([
@@ -74,6 +101,63 @@ class AuthService
 
         return $user;
     }
+
+    public function sendPasswordResetCode(string $email): void
+    {
+        $user = $this->users->findByEmail($email);
+
+        if (!$user) {
+            return;
+        }
+
+        $rawCode = $this->generateCode();
+
+        $this->verificationCodes->createForUser(
+            user: $user,
+            type: 'password_reset',
+            hashedCode: Hash::make($rawCode),
+            expiresAt: now()->addMinutes(15),
+        );
+
+        $user->notify(new PasswordResetCodeNotification($rawCode));
+    }
+
+    public function resetPassword(string $email, string $code, string $newPassword): array
+    {
+        $user = $this->users->findByEmail($email);
+
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => [__('auth.password_reset_invalid_code')],
+            ]);
+        }
+
+        $verificationCode = $this->verificationCodes
+            ->getLatestActiveCode($user, 'password_reset');
+
+        if (!$verificationCode || $verificationCode->isExpired() || !Hash::check($code, $verificationCode->code)) {
+            throw ValidationException::withMessages([
+                'code' => [__('auth.password_reset_invalid_code')],
+            ]);
+        }
+
+        DB::transaction(function () use ($user, $verificationCode, $newPassword) {
+            $this->verificationCodes->markAsUsed($verificationCode);
+
+            $user->password = Hash::make($newPassword);
+            $this->users->save($user);
+
+            $user->tokens()->delete();
+        });
+
+        $token = $user->createToken('auth')->plainTextToken;
+
+        return [
+            'user'  => $user,
+            'token' => $token,
+        ];
+    }
+
 
     protected function generateCode(): string
     {
