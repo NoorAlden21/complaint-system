@@ -20,9 +20,11 @@ class ComplaintResource extends JsonResource
 
             'category'        => new ComplaintCategoryResource($this->whenLoaded('category')),
             'department'      => new DepartmentResource($this->whenLoaded('department')),
+            'attachments' => ComplaintAttachmentResource::collection(
+                $this->whenLoaded('attachments')
+            ),
 
             'created_by'      => $this->created_by,
-            // لاحقاً ممكن نرجع اسم المواطن لو حبيت
 
             'created_at'      => $this->created_at?->toISOString(),
             'updated_at'      => $this->updated_at?->toISOString(),

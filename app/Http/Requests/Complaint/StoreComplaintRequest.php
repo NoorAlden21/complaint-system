@@ -8,10 +8,8 @@ class StoreComplaintRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // لو حاب تحصرها على citizen:
         // return $this->user()?->hasRole('citizen') ?? false;
-        // return $this->user() !== null;
-        return true;
+        return $this->user() !== null;
     }
 
     public function rules(): array
@@ -21,7 +19,13 @@ class StoreComplaintRequest extends FormRequest
             'description'  => ['required', 'string'],
             'category_id'  => ['required', 'exists:complaint_categories,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
-            //'priority'     => ['required', 'in:low,medium,high,urgent'],
+
+            'attachments'   => ['nullable', 'array', 'max:20'],
+            'attachments.*' => [
+                'file',
+                'mimes:jpg,jpeg,png,pdf,doc,docx',
+                'max:10240',
+            ],
         ];
     }
 }

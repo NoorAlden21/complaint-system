@@ -3,8 +3,10 @@
 namespace App\Services\Complaint;
 
 use App\Models\Complaint;
+use App\Models\ComplaintAttachment;
 use App\Models\User;
 use App\Repositories\Complaint\ComplaintRepositoryInterface;
+use App\Repositories\ComplaintAttachment\ComplaintAttachmentRepositoryInterface;
 use App\Repositories\ComplaintStatusHistory\ComplaintStatusHistoryRepositoryInterface;
 use App\Repositories\Department\DepartmentRepositoryInterface;
 use App\Repositories\ComplaintCategory\ComplaintCategoryRepositoryInterface;
@@ -19,12 +21,13 @@ class ComplaintService
         protected ComplaintStatusHistoryRepositoryInterface $statusHistories,
         protected DepartmentRepositoryInterface $departments,
         protected ComplaintCategoryRepositoryInterface $categories,
+        protected ComplaintAttachmentRepositoryInterface $attachments,
     ) {
     }
 
-    public function createComplaint(User $creator, array $data): Complaint
+    public function createComplaint(User $creator, array $data, array $attachments = []): Complaint
     {
-        return DB::transaction(function () use ($creator, $data) {
+        $complaint = DB::transaction(function () use ($creator, $data) {
             $data['status'] = 'pending';
 
             $complaint = $this->complaints->createForUser($creator, $data);
@@ -37,8 +40,35 @@ class ComplaintService
                 note: null
             );
 
-            return $complaint->load(['category', 'department']);
+            return $complaint;
         });
+
+        if (!empty($attachments)) {
+            $this->storeAttachments($creator, $complaint, $attachments);
+        }
+
+        return $complaint->load(['category', 'department', 'attachments']);
+    }
+
+    protected function storeAttachments(User $uploader, Complaint $complaint, array $files): void
+    {
+        $disk = 'complaints'; // عرّفه في config/filesystems.php
+
+        foreach ($files as $file) {
+            $path = $file->store(
+                'complaints/' . now()->format('Y/m') . '/' . $complaint->id,
+                $disk
+            );
+
+            $this->attachments->createForComplaint($complaint, [
+                'uploaded_by'   => $uploader->id,
+                'disk'          => $disk,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type'     => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+                'path'          => $path,
+            ]);
+        }
     }
 
     public function listForUser(
@@ -62,33 +92,13 @@ class ComplaintService
 
     public function getCreateMetadata(User $user): array
     {
-        // ممكن مستقبلاً نفلتر الإدارات/التصنيفات بناءً على صلاحيات المستخدم
         $departments = $this->departments->allActive();
         $categories  = $this->categories->allActive();
 
-        // $priorities = [
-        //     [
-        //         'value' => 'low',
-        //         'label' => __('complaints.priority.low'),
-        //     ],
-        //     [
-        //         'value' => 'medium',
-        //         'label' => __('complaints.priority.medium'),
-        //     ],
-        //     [
-        //         'value' => 'high',
-        //         'label' => __('complaints.priority.high'),
-        //     ],
-        //     [
-        //         'value' => 'urgent',
-        //         'label' => __('complaints.priority.urgent'),
-        //     ],
-        // ];
 
         return [
             'departments' => $departments,
             'categories'  => $categories,
-            // 'priorities'  => $priorities,
         ];
     }
 }

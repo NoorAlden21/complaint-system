@@ -37,9 +37,16 @@ class ComplaintController extends Controller
     {
         $user = $request->user();
 
+        $data = $request->validated();
+
+        $attachments = $request->file('attachments', []);
+
+        unset($data['attachments']);
+
         $complaint = $this->complaintService->createComplaint(
             $user,
-            $request->validated()
+            $data,
+            $attachments
         );
 
         return (new ComplaintResource($complaint))
@@ -49,12 +56,11 @@ class ComplaintController extends Controller
 
     public function show(ComplaintIndexRequest $request, int $complaint): JsonResponse
     {
-        // نستخدم نفس authorize تبع ComplaintIndexRequest (user != null)
         $user = $request->user();
 
         $model = $this->complaintService->getForUser($user, $complaint);
 
-        return (new ComplaintResource($model->load(['category', 'department'])))
+        return (new ComplaintResource($model->load(['category', 'department', 'attachments'])))
             ->response();
     }
 
@@ -67,7 +73,6 @@ class ComplaintController extends Controller
         return response()->json([
             'categories'  => ComplaintCategoryResource::collection($meta['categories']),
             'departments' => DepartmentResource::collection($meta['departments']),
-            //'priorities'  => $meta['priorities'],
         ]);
     }
 }

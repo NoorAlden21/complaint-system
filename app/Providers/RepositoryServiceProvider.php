@@ -10,6 +10,8 @@ use App\Repositories\VerificationCode\VerificationCodeRepository;
 use App\Repositories\VerificationCode\VerificationCodeRepositoryInterface;
 use App\Repositories\Complaint\ComplaintRepository;
 use App\Repositories\Complaint\ComplaintRepositoryInterface;
+use App\Repositories\ComplaintAttachment\ComplaintAttachmentRepository;
+use App\Repositories\ComplaintAttachment\ComplaintAttachmentRepositoryInterface;
 use App\Repositories\ComplaintStatusHistory\ComplaintStatusHistoryRepository;
 use App\Repositories\ComplaintStatusHistory\ComplaintStatusHistoryRepositoryInterface;
 use App\Repositories\Department\DepartmentRepository;
@@ -49,6 +51,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ComplaintCategoryRepositoryInterface::class,
             ComplaintCategoryRepository::class
+        );
+
+        $this->app->bind(
+            ComplaintAttachmentRepositoryInterface::class,
+            ComplaintAttachmentRepository::class
         );
     }
 
