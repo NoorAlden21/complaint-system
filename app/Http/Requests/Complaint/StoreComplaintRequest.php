@@ -19,6 +19,7 @@ class StoreComplaintRequest extends FormRequest
             'description'  => ['required', 'string'],
             'category_id'  => ['required', 'exists:complaint_categories,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
+            'region_id' => ['required', 'exists:regions,id'],
 
             'attachments'   => ['nullable', 'array', 'max:20'],
             'attachments.*' => [

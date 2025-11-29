@@ -16,6 +16,7 @@ class Complaint extends Model
         'priority',
         'category_id',
         'department_id',
+        'region_id',
         'created_by',
         // 'assigned_to',
         // 'is_anonymous',
@@ -40,6 +41,11 @@ class Complaint extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
     }
 
     public function creator()

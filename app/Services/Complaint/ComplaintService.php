@@ -4,6 +4,7 @@ namespace App\Services\Complaint;
 
 use App\Models\Complaint;
 use App\Models\ComplaintAttachment;
+use App\Models\Region;
 use App\Models\User;
 use App\Repositories\Complaint\ComplaintRepositoryInterface;
 use App\Repositories\ComplaintAttachment\ComplaintAttachmentRepositoryInterface;
@@ -47,7 +48,7 @@ class ComplaintService
             $this->storeAttachments($creator, $complaint, $attachments);
         }
 
-        return $complaint->load(['category', 'department', 'attachments']);
+        return $complaint->load(['category', 'department', 'attachments', 'region']);
     }
 
     protected function storeAttachments(User $uploader, Complaint $complaint, array $files): void
@@ -94,11 +95,13 @@ class ComplaintService
     {
         $departments = $this->departments->allActive();
         $categories  = $this->categories->allActive();
+        $regions = Region::all();
 
 
         return [
             'departments' => $departments,
             'categories'  => $categories,
+            'regions' => $regions
         ];
     }
 }

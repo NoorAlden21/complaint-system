@@ -1,0 +1,34 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class RegionSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $regions = [
+            ['name_en' => 'Damascus',        'name_ar' => 'دمشق'],
+            ['name_en' => 'Rif Dimashq',     'name_ar' => 'ريف دمشق'],
+            ['name_en' => 'Aleppo',          'name_ar' => 'حلب'],
+            ['name_en' => 'Homs',            'name_ar' => 'حمص'],
+            ['name_en' => 'Hama',            'name_ar' => 'حماة'],
+            ['name_en' => 'Latakia',         'name_ar' => 'اللاذقية'],
+            ['name_en' => 'Tartus',          'name_ar' => 'طرطوس'],
+            ['name_en' => 'Idlib',           'name_ar' => 'إدلب'],
+            ['name_en' => 'Deir ez-Zor',     'name_ar' => 'دير الزور'],
+            ['name_en' => 'Raqqa',           'name_ar' => 'الرقة'],
+            ['name_en' => 'Al-Hasakah',      'name_ar' => 'الحسكة'],
+            ['name_en' => 'Daraa',           'name_ar' => 'درعا'],
+            ['name_en' => 'As-Suwayda',      'name_ar' => 'السويداء'],
+            ['name_en' => 'Quneitra',        'name_ar' => 'القنيطرة'],
+        ];
+
+        DB::table('regions')->insert($regions);
+    }
+}

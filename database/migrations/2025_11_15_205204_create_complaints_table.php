@@ -37,6 +37,9 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('departments');
 
+            $table->foreignId('region_id')
+                ->constrained('regions');
+
             $table->foreignId('created_by')
                 ->constrained('users');
 

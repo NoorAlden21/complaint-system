@@ -18,7 +18,7 @@ class ComplaintRepository implements ComplaintRepositoryInterface
     public function findForUser(User $user, int $id): ?Complaint
     {
         $query = Complaint::query()
-            ->with(['category', 'department']);
+            ->with(['category', 'department', 'region', 'attachments']);
 
         if ($user->hasRole('citizen')) {
             $query->where('created_by', $user->id);
@@ -35,7 +35,7 @@ class ComplaintRepository implements ComplaintRepositoryInterface
         int $perPage = 15
     ): LengthAwarePaginator {
         $query = Complaint::query()
-            ->with(['category', 'department'])
+            ->with(['category', 'department', 'region'])
             ->latest('created_at');
 
         if ($user->hasRole('citizen')) {

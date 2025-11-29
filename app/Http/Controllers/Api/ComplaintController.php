@@ -9,6 +9,7 @@ use App\Http\Requests\Complaint\ComplaintMetaRequest;
 use App\Http\Resources\ComplaintResource;
 use App\Http\Resources\ComplaintCategoryResource;
 use App\Http\Resources\DepartmentResource;
+use App\Http\Resources\RegionResource;
 use App\Services\Complaint\ComplaintService;
 use Illuminate\Http\JsonResponse;
 
@@ -60,7 +61,7 @@ class ComplaintController extends Controller
 
         $model = $this->complaintService->getForUser($user, $complaint);
 
-        return (new ComplaintResource($model->load(['category', 'department', 'attachments'])))
+        return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments'])))
             ->response();
     }
 
@@ -73,6 +74,7 @@ class ComplaintController extends Controller
         return response()->json([
             'categories'  => ComplaintCategoryResource::collection($meta['categories']),
             'departments' => DepartmentResource::collection($meta['departments']),
+            'regions' => RegionResource::collection($meta['regions'])
         ]);
     }
 }

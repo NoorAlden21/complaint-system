@@ -20,6 +20,8 @@ class ComplaintResource extends JsonResource
 
             'category'        => new ComplaintCategoryResource($this->whenLoaded('category')),
             'department'      => new DepartmentResource($this->whenLoaded('department')),
+            'region'          => new RegionResource($this->whenLoaded('region')),
+
             'attachments' => ComplaintAttachmentResource::collection(
                 $this->whenLoaded('attachments')
             ),
