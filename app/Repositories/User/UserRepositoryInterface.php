@@ -11,4 +11,6 @@ interface UserRepositoryInterface
     public function findByEmail(string $email): ?User;
 
     public function save(User $user): User;
+
+    public function createEmployee(array $data): User;
 }

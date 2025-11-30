@@ -23,6 +23,9 @@ return new class extends Migration
             $table->string('mime_type')->nullable();
             $table->unsignedBigInteger('size')->nullable(); // bytes
 
+            $table->unsignedInteger('added_in_version')->nullable();
+            $table->unsignedInteger('removed_in_version')->nullable();
+
             $table->timestamps();
 
             $table->index('complaint_id');

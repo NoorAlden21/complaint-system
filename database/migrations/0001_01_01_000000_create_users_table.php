@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->string('email')->unique();
             $table->string('phone_number', 10)->unique();
             $table->timestamp('email_verified_at')->nullable();

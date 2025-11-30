@@ -10,6 +10,7 @@ class Complaint extends Model
     use HasFactory;
 
     protected $fillable = [
+        'reference_number',
         'title',
         'description',
         'status',
@@ -18,8 +19,6 @@ class Complaint extends Model
         'department_id',
         'region_id',
         'created_by',
-        // 'assigned_to',
-        // 'is_anonymous',
         'sla_due_at',
         'resolved_at',
         'closed_at',
@@ -27,7 +26,6 @@ class Complaint extends Model
     ];
 
     protected $casts = [
-        //'is_anonymous' => 'bool',
         'sla_due_at'   => 'datetime',
         'resolved_at'  => 'datetime',
         'closed_at'    => 'datetime',
@@ -53,23 +51,18 @@ class Complaint extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // public function assignee()
-    // {
-    //     return $this->belongsTo(User::class, 'assigned_to');
-    // }
-
-    public function comments()
+    public function versions()
     {
-        return $this->hasMany(ComplaintComment::class);
+        return $this->hasMany(ComplaintVersion::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(ComplaintNote::class);
     }
 
     public function attachments()
     {
         return $this->hasMany(ComplaintAttachment::class);
-    }
-
-    public function statusHistories()
-    {
-        return $this->hasMany(ComplaintStatusHistory::class);
     }
 }

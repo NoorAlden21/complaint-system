@@ -16,6 +16,8 @@ class ComplaintAttachment extends Model
         'path',
         'mime_type',
         'size',
+        'added_in_version',
+        'removed_in_version'
     ];
 
     public function complaint()

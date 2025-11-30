@@ -11,6 +11,8 @@ class ComplaintResource extends JsonResource
     {
         return [
             'id'              => $this->id,
+            'reference_number' => $this->reference_number,
+
             'title'           => $this->title,
             'description'     => $this->description,
 

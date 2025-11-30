@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Complaint\ComplaintIndexRequest;
 use App\Http\Requests\Complaint\StoreComplaintRequest;
 use App\Http\Requests\Complaint\ComplaintMetaRequest;
+use App\Http\Requests\Complaint\UpdateComplaintRequest;
+use App\Http\Requests\Complaint\ReassignComplaintRequest;
+use App\Http\Requests\Complaint\ComplaintRequestMoreInfoRequest;
 use App\Http\Resources\ComplaintResource;
 use App\Http\Resources\ComplaintCategoryResource;
 use App\Http\Resources\DepartmentResource;
@@ -28,7 +31,7 @@ class ComplaintController extends Controller
         $perPage = $filters['per_page'] ?? 15;
         unset($filters['per_page']);
 
-        $paginator = $this->complaintService->listForUser($user, $filters, $perPage);
+        $paginator = $this->complaintService->list($user, $filters, $perPage);
 
         return ComplaintResource::collection($paginator)
             ->response();
@@ -54,6 +57,62 @@ class ComplaintController extends Controller
             ->response()
             ->setStatusCode(201);
     }
+
+    public function update(
+        UpdateComplaintRequest $request,
+        int $complaint
+    ): JsonResponse {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $model = $this->complaintService->updateComplaint(
+            user: $user,
+            complaintId: $complaint,
+            data: $data,
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments'])
+        ))->response();
+    }
+
+    public function reassign(
+        ReassignComplaintRequest $request,
+        int $complaint
+    ): JsonResponse {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $model = $this->complaintService->reassignComplaint(
+            user: $user,
+            complaintId: $complaint,
+            departmentId: $data['department_id'],
+            note: $data['note'] ?? null,
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments'])
+        ))->response();
+    }
+
+    public function requestMoreInfo(
+        ComplaintRequestMoreInfoRequest $request,
+        int $complaint
+    ): JsonResponse {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $model = $this->complaintService->requestMoreInfo(
+            user: $user,
+            complaintId: $complaint,
+            message: $data['message'],
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments'])
+        ))->response();
+    }
+
 
     public function show(ComplaintIndexRequest $request, int $complaint): JsonResponse
     {

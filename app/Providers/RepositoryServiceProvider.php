@@ -18,6 +18,8 @@ use App\Repositories\Department\DepartmentRepository;
 use App\Repositories\Department\DepartmentRepositoryInterface;
 use App\Repositories\ComplaintCategory\ComplaintCategoryRepository;
 use App\Repositories\ComplaintCategory\ComplaintCategoryRepositoryInterface;
+use App\Repositories\ComplaintVersion\ComplaintVersionRepository;
+use App\Repositories\ComplaintVersion\ComplaintVersionRepositoryInterface;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -36,6 +38,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ComplaintRepositoryInterface::class,
             ComplaintRepository::class
+        );
+
+        $this->app->bind(
+            ComplaintVersionRepositoryInterface::class,
+            ComplaintVersionRepository::class
         );
 
         $this->app->bind(

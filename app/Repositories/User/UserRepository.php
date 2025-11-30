@@ -25,4 +25,11 @@ class UserRepository implements UserRepositoryInterface
 
         return $user;
     }
+
+    public function createEmployee(array $data): User
+    {
+        $user = User::create($data);
+
+        return $user;
+    }
 }

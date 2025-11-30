@@ -8,9 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('complaints', function (Blueprint $table) {
+        Schema::create('complaint_versions', function (Blueprint $table) {
             $table->id();
-            $table->string('reference_number')->nullable()->unique();
+
+            $table->foreignId('complaint_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->unsignedInteger('version_number');
 
             $table->string('title');
             $table->text('description');
@@ -23,7 +28,7 @@ return new class extends Migration
                 'resolved',
                 'closed',
                 'rejected',
-            ])->default('pending');
+            ])->nullable();
 
             $table->enum('priority', [
                 'low',
@@ -33,36 +38,36 @@ return new class extends Migration
             ])->default('medium')->nullable();
 
             $table->foreignId('category_id')
-                ->constrained('complaint_categories');
+                ->nullable()
+                ->constrained('complaint_categories')
+                ->nullOnDelete();
 
             $table->foreignId('department_id')
                 ->nullable()
-                ->constrained('departments');
+                ->constrained()
+                ->nullOnDelete();
 
             $table->foreignId('region_id')
-                ->constrained('regions');
+                ->nullable()
+                ->constrained('regions')
+                ->nullOnDelete();
 
-            $table->foreignId('created_by')
-                ->constrained('users');
+            $table->foreignId('changed_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
-            $table->timestamp('sla_due_at')->nullable();
-            $table->timestamp('resolved_at')->nullable();
-            $table->timestamp('closed_at')->nullable();
-            $table->text('resolution_summary')->nullable();
+            // وصف الحدث: إنشاء الشكوى، تغيير حالة، طلب معلومات إضافية...
+            $table->text('note')->nullable();
 
             $table->timestamps();
 
-            $table->index('status');
-            $table->index('priority');
-            $table->index('department_id');
-            $table->index('region_id');
-            $table->index('created_by');
-            //$table->index('assigned_to');
+            $table->unique(['complaint_id', 'version_number']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('complaints');
+        Schema::dropIfExists('complaint_versions');
     }
 };

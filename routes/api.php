@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
+use App\Http\Controllers\Api\EmployeeController;
 
 // public
 Route::post('/register', [AuthController::class, 'register']);
@@ -18,5 +19,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/complaints/meta', [ComplaintController::class, 'meta']);
 
     Route::apiResource('complaints', ComplaintController::class)
-        ->only(['index', 'store', 'show']);
+        ->only(['index', 'store', 'show', 'update']);
+
+    Route::post('/complaints/{complaint}/reassign', [ComplaintController::class, 'reassign']);
+
+    Route::post('/complaints/{complaint}/request-info', [ComplaintController::class, 'requestMoreInfo']);
+});
+
+//super_admin
+
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    Route::post('/employees', [EmployeeController::class, 'store']);
 });
