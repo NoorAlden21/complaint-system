@@ -16,7 +16,7 @@ class InitialUsersSeeder extends Seeder
         $employeeRole   = Role::firstOrCreate(['name' => 'employee']);
 
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@example.com'],
+            ['email' => 'admin@example.com'],
             [
                 'name'     => 'Super Admin',
                 'password' => Hash::make('password'),

@@ -59,7 +59,7 @@ class AuthService
             ]);
         }
 
-        if (!$user->email_verified_at) {
+        if ($user->hasRole('citizen') && !$user->email_verified_at) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.email_not_verified')],
             ]);

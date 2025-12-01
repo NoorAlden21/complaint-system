@@ -32,6 +32,7 @@ class AuthController extends Controller
             'data'    => [
                 'user'  => new UserResource($user),
                 'token' => $token,
+                'role' => $user->role,
             ],
         ], 201);
     }
