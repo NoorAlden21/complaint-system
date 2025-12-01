@@ -72,44 +72,7 @@ class ComplaintController extends Controller
         );
 
         return (new ComplaintResource(
-            $model->load(['category', 'department', 'region', 'attachments'])
-        ))->response();
-    }
-
-    public function reassign(
-        ReassignComplaintRequest $request,
-        int $complaint
-    ): JsonResponse {
-        $user = $request->user();
-        $data = $request->validated();
-
-        $model = $this->complaintService->reassignComplaint(
-            user: $user,
-            complaintId: $complaint,
-            departmentId: $data['department_id'],
-            note: $data['note'] ?? null,
-        );
-
-        return (new ComplaintResource(
-            $model->load(['category', 'department', 'region', 'attachments'])
-        ))->response();
-    }
-
-    public function requestMoreInfo(
-        ComplaintRequestMoreInfoRequest $request,
-        int $complaint
-    ): JsonResponse {
-        $user = $request->user();
-        $data = $request->validated();
-
-        $model = $this->complaintService->requestMoreInfo(
-            user: $user,
-            complaintId: $complaint,
-            message: $data['message'],
-        );
-
-        return (new ComplaintResource(
-            $model->load(['category', 'department', 'region', 'attachments'])
+            $model->load(['category', 'department', 'region', 'attachments', 'versions'])
         ))->response();
     }
 
@@ -120,7 +83,7 @@ class ComplaintController extends Controller
 
         $model = $this->complaintService->getForUser($user, $complaint);
 
-        return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments'])))
+        return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments', 'versions'])))
             ->response();
     }
 

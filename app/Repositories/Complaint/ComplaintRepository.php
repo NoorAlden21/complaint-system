@@ -25,13 +25,11 @@ class ComplaintRepository implements ComplaintRepositoryInterface
     public function findForUser(User $user, int $id): ?Complaint
     {
         $query = Complaint::query()
-            ->with(['category', 'department', 'region', 'attachments']);
+            ->with(['category', 'department', 'region', 'attachments', 'versions']);
 
         if ($user->hasRole('citizen')) {
             $query->where('created_by', $user->id);
         }
-
-        // لاحقاً نقدر نضيف منطق officer / super_admin بشكل أدق
 
         return $query->find($id);
     }

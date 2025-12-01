@@ -28,6 +28,10 @@ class ComplaintResource extends JsonResource
                 $this->whenLoaded('attachments')
             ),
 
+            'versions' => ComplaintVersionResource::collection(
+                $this->whenLoaded('versions')
+            ),
+
             'created_by'      => $this->created_by,
 
             'created_at'      => $this->created_at?->toISOString(),

@@ -14,6 +14,7 @@ class UpdateComplaintRequest extends FormRequest
         if (!$user) {
             return false;
         }
+
         return $user->hasRole('super_admin') || $user->hasRole('employee');
     }
 
@@ -33,6 +34,7 @@ class UpdateComplaintRequest extends FormRequest
                     'rejected',
                 ]),
             ],
+
             'priority' => [
                 'nullable',
                 'string',
@@ -42,6 +44,25 @@ class UpdateComplaintRequest extends FormRequest
                     'high',
                     'urgent',
                 ]),
+            ],
+
+            'department_id' => [
+                'nullable',
+                'integer',
+                'exists:departments,id',
+            ],
+
+            'note' => [
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+
+            'info_request_message' => [
+                'nullable',
+                'string',
+                'max:2000',
+                'required_if:status,needs_more_info',
             ],
         ];
     }

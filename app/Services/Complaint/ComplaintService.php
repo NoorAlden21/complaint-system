@@ -125,28 +125,11 @@ class ComplaintService
                 throw new ModelNotFoundException('Complaint not found.');
             }
 
-            $originalStatus   = $complaint->status;
-            $originalPriority = $complaint->priority;
-
             $changedFields = [];
 
-            if (array_key_exists('status', $data) && $data['status'] !== null && $data['status'] !== $complaint->status) {
-                $complaint->status = $data['status'];
-                $changedFields['status'] = [$originalStatus, $data['status']];
-
-                if ($data['status'] === 'resolved' && is_null($complaint->resolved_at)) {
-                    $complaint->resolved_at = now();
-                }
-
-                if ($data['status'] === 'closed' && is_null($complaint->closed_at)) {
-                    $complaint->closed_at = now();
-                }
-            }
-
-            if (array_key_exists('priority', $data) && $data['priority'] !== null && $data['priority'] !== $complaint->priority) {
-                $complaint->priority = $data['priority'];
-                $changedFields['priority'] = [$originalPriority, $data['priority']];
-            }
+            $this->applyStatusChange($complaint, $data, $changedFields);
+            $this->applyPriorityChange($complaint, $data, $changedFields);
+            $this->applyDepartmentChange($complaint, $data, $changedFields);
 
             if (empty($changedFields)) {
                 return $complaint;
@@ -154,111 +137,150 @@ class ComplaintService
 
             $complaint->save();
 
-            $parts = [];
-            if (isset($changedFields['status'])) {
-                [$from, $to] = $changedFields['status'];
-                $parts[] = "تغيير الحالة من {$from} إلى {$to}";
-            }
-            if (isset($changedFields['priority'])) {
-                [$from, $to] = $changedFields['priority'];
-                $parts[] = "تغيير الأولوية من {$from} إلى {$to}";
-            }
-
-            $note = 'تعديل الشكوى: ' . implode('، ', $parts);
-
-            $this->createVersionSnapshot(
-                complaint: $complaint,
-                user: $user,
-                note: $note,
+            $versionNote = $this->buildChangeNote(
+                changedFields: $changedFields,
+                customNote: $data['note'] ?? null
             );
 
-            return $complaint;
-        });
-    }
-
-    public function reassignComplaint(
-        User $user,
-        int $complaintId,
-        int $departmentId,
-        ?string $note = null
-    ): Complaint {
-        return DB::transaction(function () use ($user, $complaintId, $departmentId, $note) {
-            $complaint = $this->complaints->findById($complaintId);
-
-            if (!$complaint) {
-                throw new ModelNotFoundException('Complaint not found.');
-            }
-
-            $oldDepartmentId = $complaint->department_id;
-
-            if ($oldDepartmentId === $departmentId) {
-                return $complaint;
-            }
-
-            $complaint->department_id = $departmentId;
-            $complaint->save();
-
-            $versionNote = $note ?: "إعادة إسناد الشكوى من قسم ID={$oldDepartmentId} إلى قسم ID={$departmentId}";
-
-            $this->createVersionSnapshot(
+            $version = $this->createVersionSnapshot(
                 complaint: $complaint,
                 user: $user,
                 note: $versionNote,
             );
 
-            if ($note) {
-                ComplaintNote::create([
-                    'complaint_id'         => $complaint->id,
-                    'complaint_version_id' => $complaint->versions()->latest('version_number')->first()?->id,
-                    'created_by'           => $user->id,
-                    'type'                 => 'note',
-                    'is_internal'          => true,
-                    'message'              => $note,
-                ]);
+            if (
+                isset($changedFields['status']) &&
+                $complaint->status === 'needs_more_info' &&
+                !empty($data['info_request_message'])
+            ) {
+                $this->createInfoRequestNote(
+                    complaint: $complaint,
+                    version: $version,
+                    user: $user,
+                    message: $data['info_request_message']
+                );
             }
 
             return $complaint;
         });
     }
 
-    public function requestMoreInfo(
+    //update helpers
+
+    protected function applyStatusChange(
+        Complaint $complaint,
+        array $data,
+        array &$changedFields
+    ): void {
+        if (
+            !array_key_exists('status', $data) ||
+            $data['status'] === null ||
+            $data['status'] === $complaint->status
+        ) {
+            return;
+        }
+
+        $originalStatus = $complaint->status;
+        $newStatus      = $data['status'];
+
+        $complaint->status = $newStatus;
+        $changedFields['status'] = [$originalStatus, $newStatus];
+
+        if ($newStatus === 'resolved' && is_null($complaint->resolved_at)) {
+            $complaint->resolved_at = now();
+        }
+
+        if ($newStatus === 'closed' && is_null($complaint->closed_at)) {
+            $complaint->closed_at = now();
+        }
+    }
+
+    protected function applyPriorityChange(
+        Complaint $complaint,
+        array $data,
+        array &$changedFields
+    ): void {
+        if (
+            !array_key_exists('priority', $data) ||
+            $data['priority'] === null ||
+            $data['priority'] === $complaint->priority
+        ) {
+            return;
+        }
+
+        $originalPriority = $complaint->priority;
+        $newPriority      = $data['priority'];
+
+        $complaint->priority = $newPriority;
+        $changedFields['priority'] = [$originalPriority, $newPriority];
+    }
+
+    protected function applyDepartmentChange(
+        Complaint $complaint,
+        array $data,
+        array &$changedFields
+    ): void {
+        if (
+            !array_key_exists('department_id', $data) ||
+            $data['department_id'] === null ||
+            $data['department_id'] === $complaint->department_id
+        ) {
+            return;
+        }
+
+        $originalDepartment = $complaint->department_id;
+        $newDepartment      = $data['department_id'];
+
+        $complaint->department_id = $newDepartment;
+        $changedFields['department_id'] = [$originalDepartment, $newDepartment];
+    }
+
+    protected function buildChangeNote(
+        array $changedFields,
+        ?string $customNote = null
+    ): string {
+        if ($customNote !== null && trim($customNote) !== '') {
+            return $customNote;
+        }
+
+        $parts = [];
+
+        if (isset($changedFields['status'])) {
+            [$from, $to] = $changedFields['status'];
+            $parts[] = "تغيير الحالة من {$from} إلى {$to}";
+        }
+
+        if (isset($changedFields['priority'])) {
+            [$from, $to] = $changedFields['priority'];
+            $parts[] = "تغيير الأولوية من {$from} إلى {$to}";
+        }
+
+        if (isset($changedFields['department_id'])) {
+            [$from, $to] = $changedFields['department_id'];
+            $parts[] = "إعادة الإسناد من قسم ID={$from} إلى قسم ID={$to}";
+        }
+
+        if (empty($parts)) {
+            return 'تعديل على بيانات الشكوى';
+        }
+
+        return 'تعديل الشكوى: ' . implode('، ', $parts);
+    }
+
+    protected function createInfoRequestNote(
+        Complaint $complaint,
+        ComplaintVersion $version,
         User $user,
-        int $complaintId,
         string $message
-    ): Complaint {
-        return DB::transaction(function () use ($user, $complaintId, $message) {
-            $complaint = $this->complaints->findById($complaintId);
-
-            if (!$complaint) {
-                throw new ModelNotFoundException('Complaint not found.');
-            }
-
-            if (!in_array($complaint->status, ['pending', 'open', 'in_progress', 'needs_more_info'])) {
-                throw new \RuntimeException('Cannot request more info for this complaint status.');
-            }
-
-            $originalStatus = $complaint->status;
-            $complaint->status = 'needs_more_info';
-            $complaint->save();
-
-            // نسوي نسخة جديدة
-            $version = $this->createVersionSnapshot(
-                complaint: $complaint,
-                user: $user,
-                note: "طلب معلومات إضافية من المواطن (من حالة {$originalStatus} إلى needs_more_info)",
-            );
-
-            ComplaintNote::create([
-                'complaint_id'         => $complaint->id,
-                'complaint_version_id' => $version->id,
-                'created_by'           => $user->id,
-                'type'                 => 'info_request',
-                'is_internal'          => false,
-                'message'              => $message,
-            ]);
-
-            return $complaint;
-        });
+    ): void {
+        ComplaintNote::create([
+            'complaint_id'         => $complaint->id,
+            'complaint_version_id' => $version->id,
+            'created_by'           => $user->id,
+            'type'                 => 'info_request',
+            'is_internal'          => false,
+            'message'              => $message,
+        ]);
     }
 
 
