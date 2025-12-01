@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\Backup\BackupLogRepository;
+use App\Repositories\Backup\BackupLogRepositoryInterface;
 use Illuminate\Support\ServiceProvider;
 
 use App\Repositories\User\UserRepository;
@@ -63,6 +65,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ComplaintAttachmentRepositoryInterface::class,
             ComplaintAttachmentRepository::class
+        );
+
+        $this->app->bind(
+            BackupLogRepositoryInterface::class,
+            BackupLogRepository::class
         );
     }
 
