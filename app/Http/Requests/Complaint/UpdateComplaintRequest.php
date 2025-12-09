@@ -21,6 +21,8 @@ class UpdateComplaintRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'row_version'   => ['required', 'integer'],
+
             'status' => [
                 'nullable',
                 'string',

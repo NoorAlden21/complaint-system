@@ -15,4 +15,7 @@ return [
         'high'   => 'High',
         'urgent' => 'Urgent',
     ],
+
+    'locked_by_other' => 'This complaint is currently locked by another user.',
+    'optimistic_lock_conflict' => 'This complaint has been modified by another user. Please refresh and try again.',
 ];

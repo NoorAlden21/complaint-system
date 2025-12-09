@@ -34,6 +34,8 @@ class ComplaintResource extends JsonResource
 
             'created_by'      => $this->created_by,
 
+            'row_version'      => $this->row_version,
+
             'created_at'      => $this->created_at?->toISOString(),
             'updated_at'      => $this->updated_at?->toISOString(),
         ];

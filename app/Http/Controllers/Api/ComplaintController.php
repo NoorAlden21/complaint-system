@@ -58,6 +58,35 @@ class ComplaintController extends Controller
             ->setStatusCode(201);
     }
 
+    public function lock(int $complaint): JsonResponse
+    {
+        $user = request()->user();
+
+        $model = $this->complaintService->lockComplaint(
+            user: $user,
+            complaintId: $complaint,
+            ttlMinutes: 15,
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments', 'versions', 'locker'])
+        ))->response();
+    }
+
+    public function unlock(int $complaint): JsonResponse
+    {
+        $user = request()->user();
+
+        $model = $this->complaintService->unlockComplaint(
+            user: $user,
+            complaintId: $complaint,
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments', 'versions', 'locker'])
+        ))->response();
+    }
+
     public function update(
         UpdateComplaintRequest $request,
         int $complaint

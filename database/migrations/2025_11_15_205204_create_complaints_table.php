@@ -45,10 +45,19 @@ return new class extends Migration
             $table->foreignId('created_by')
                 ->constrained('users');
 
+            $table->foreignId('locked_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+            $table->timestamp('locked_at')->nullable();
+            $table->timestamp('lock_expires_at')->nullable();
+
             $table->timestamp('sla_due_at')->nullable();
             $table->timestamp('resolved_at')->nullable();
             $table->timestamp('closed_at')->nullable();
             $table->text('resolution_summary')->nullable();
+
+            $table->unsignedBigInteger('row_version')->default(0);
 
             $table->timestamps();
 
@@ -57,6 +66,9 @@ return new class extends Migration
             $table->index('department_id');
             $table->index('region_id');
             $table->index('created_by');
+            $table->index('locked_by');
+            $table->index('lock_expires_at');
+            $table->index('row_version');
         });
     }
 

@@ -10,7 +10,13 @@ interface ComplaintRepositoryInterface
 {
     public function findById(int $id): ?Complaint;
 
+    public function findByIdForUpdate(int $id): ?Complaint;
+
     public function createForUser(User $user, array $attributes): Complaint;
+
+    public function lock(Complaint $complaint, int $userId, \DateTimeInterface $expiresAt): Complaint;
+
+    public function unlock(Complaint $complaint): Complaint;
 
     public function findForUser(User $user, int $id): ?Complaint;
 

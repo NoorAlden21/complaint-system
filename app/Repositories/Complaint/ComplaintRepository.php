@@ -15,11 +15,41 @@ class ComplaintRepository implements ComplaintRepositoryInterface
             ->find($id);
     }
 
+    public function findByIdForUpdate(int $id): ?Complaint
+    {
+        return Complaint::query()
+            ->whereKey($id)
+            ->lockForUpdate() //pessimistic lock
+            ->first();
+    }
+
     public function createForUser(User $user, array $attributes): Complaint
     {
         $attributes['created_by'] = $user->id;
 
         return Complaint::create($attributes);
+    }
+
+    public function lock(Complaint $complaint, int $userId, \DateTimeInterface $expiresAt): Complaint
+    {
+        $complaint->locked_by       = $userId;
+        $complaint->locked_at       = now();
+        $complaint->lock_expires_at = $expiresAt;
+
+        $complaint->save();
+
+        return $complaint;
+    }
+
+    public function unlock(Complaint $complaint): Complaint
+    {
+        $complaint->locked_by       = null;
+        $complaint->locked_at       = null;
+        $complaint->lock_expires_at = null;
+
+        $complaint->save();
+
+        return $complaint;
     }
 
     public function findForUser(User $user, int $id): ?Complaint

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use App\Models\ComplaintNote;
 use App\Models\ComplaintVersion;
+use Illuminate\Validation\ValidationException;
 
 class ComplaintService
 {
@@ -80,6 +81,51 @@ class ComplaintService
         }
     }
 
+    public function lockComplaint(User $user, int $complaintId, int $ttlMinutes = 15): Complaint
+    {
+        return DB::transaction(function () use ($user, $complaintId, $ttlMinutes) {
+            $complaint = $this->complaints->findByIdForUpdate($complaintId);
+
+            if (!$complaint) {
+                throw new ModelNotFoundException('Complaint not found.');
+            }
+
+            if ($complaint->isLocked() && $complaint->locked_by !== $user->id) {
+                throw ValidationException::withMessages([
+                    'complaint' => ['هذه الشكوى مقفولة حاليًا من مستخدم آخر.'],
+                ]);
+            }
+
+            $expiresAt = now()->addMinutes($ttlMinutes);
+
+            return $this->complaints->lock($complaint, $user->id, $expiresAt);
+        });
+    }
+
+    public function unlockComplaint(User $user, int $complaintId): Complaint
+    {
+        return DB::transaction(function () use ($user, $complaintId) {
+            $complaint = $this->complaints->findByIdForUpdate($complaintId);
+
+            if (!$complaint) {
+                throw new ModelNotFoundException('Complaint not found.');
+            }
+
+            if (
+                $complaint->isLocked() &&
+                $complaint->locked_by !== $user->id &&
+                !$user->hasRole('super_admin')
+            ) {
+
+                throw ValidationException::withMessages([
+                    'complaint' => ['لا يمكنك فك قفل شكوى مقفولة من مستخدم آخر.'],
+                ]);
+            }
+
+            return $this->complaints->unlock($complaint);
+        });
+    }
+
     public function list(
         User $user,
         array $filters = [],
@@ -119,10 +165,33 @@ class ComplaintService
         array $data
     ): Complaint {
         return DB::transaction(function () use ($user, $complaintId, $data) {
-            $complaint = $this->complaints->findById($complaintId);
+            $expectedVersion = (int) ($data['row_version'] ?? -1); //optimistic lock
+
+            $complaint = $this->complaints->findByIdForUpdate($complaintId);
 
             if (!$complaint) {
                 throw new ModelNotFoundException('Complaint not found.');
+            }
+
+            //optimistic lock
+            if ($expectedVersion !== $complaint->row_version) {
+                throw ValidationException::withMessages([
+                    'row_version' => [__('complaints.optimistic_lock_conflict')],
+                ]);
+            }
+
+            //logical lock
+            if ($user->hasRole('employee')) {
+                if ($complaint->isLocked() && $complaint->locked_by !== $user->id) {
+                    throw ValidationException::withMessages([
+                        'complaint' => [__('complaints.locked_by_other')],
+                    ]);
+                }
+
+                // extending the lock with every update
+                if ($complaint->locked_by === $user->id) {
+                    $this->complaints->lock($complaint, $user->id, now()->addMinutes(15));
+                }
             }
 
             $changedFields = [];
@@ -134,6 +203,8 @@ class ComplaintService
             if (empty($changedFields)) {
                 return $complaint;
             }
+
+            $complaint->row_version++;
 
             $complaint->save();
 
