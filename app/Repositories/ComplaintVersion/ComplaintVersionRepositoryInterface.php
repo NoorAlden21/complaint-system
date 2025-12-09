@@ -7,6 +7,8 @@ use App\Models\ComplaintVersion;
 
 interface ComplaintVersionRepositoryInterface
 {
+    public function findById(int $id): ?ComplaintVersion;
+
     public function record(
         Complaint $complaint,
         int $version_number,

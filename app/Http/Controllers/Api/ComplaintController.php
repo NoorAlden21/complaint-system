@@ -83,7 +83,7 @@ class ComplaintController extends Controller
 
         $model = $this->complaintService->getForUser($user, $complaint);
 
-        return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments', 'versions'])))
+        return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments', 'versions.notes'])))
             ->response();
     }
 

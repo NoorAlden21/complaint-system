@@ -32,7 +32,7 @@ class ComplaintService
     {
         $complaint = DB::transaction(function () use ($creator, $data) {
             $data['status'] = 'pending';
-            $date['priority'] = 'medium';
+            $data['priority'] = 'medium';
 
             $complaint = $this->complaints->createForUser($creator, $data);
             $complaint->reference_number = $this->generateReferenceNumber($complaint);
@@ -49,7 +49,7 @@ class ComplaintService
         });
 
         if (!empty($attachments)) {
-            $this->storeAttachments($creator, $complaint, $attachments);
+            $this->storeAttachments($creator, $complaint, $attachments, 1);
         }
 
         return $complaint->load(['category', 'department', 'attachments', 'region']);
@@ -164,6 +164,10 @@ class ComplaintService
             return $complaint;
         });
     }
+
+    //public function restoreVersion()
+    //{
+    //}
 
     //update helpers
 

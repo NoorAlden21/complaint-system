@@ -36,6 +36,4 @@ interface ComplaintRepositoryInterface
         array $filters = [],
         int $perPage = 15
     ): LengthAwarePaginator;
-
-    public function updateComplaint(User $user, Complaint $complaint, array $attributes): Complaint;
 }

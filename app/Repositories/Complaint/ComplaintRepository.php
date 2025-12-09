@@ -11,7 +11,7 @@ class ComplaintRepository implements ComplaintRepositoryInterface
     public function findById(int $id): ?Complaint
     {
         return Complaint::query()
-            ->with(['category', 'department', 'region', 'attachments', 'versions'])
+            ->with(['category', 'department', 'region', 'attachments', 'versions.notes'])
             ->find($id);
     }
 
@@ -25,7 +25,7 @@ class ComplaintRepository implements ComplaintRepositoryInterface
     public function findForUser(User $user, int $id): ?Complaint
     {
         $query = Complaint::query()
-            ->with(['category', 'department', 'region', 'attachments', 'versions']);
+            ->with(['category', 'department', 'region', 'attachments', 'versions.notes']);
 
         if ($user->hasRole('citizen')) {
             $query->where('created_by', $user->id);
@@ -69,8 +69,8 @@ class ComplaintRepository implements ComplaintRepositoryInterface
         int $perPage = 15
     ): LengthAwarePaginator {
         $query = Complaint::query()->with(['category', 'department', 'region'])->latest('created_at');
-        if ($user->department) {
-            $query->where('department_id', $user->department->id);
+        if ($user->department_id) {
+            $query->where('department_id', $user->department_id);
         }
 
         $this->applyFilters($query, $filters);
@@ -116,9 +116,5 @@ class ComplaintRepository implements ComplaintRepositoryInterface
         if (!empty($filters['region_id'])) {
             $query->where('region_id', $filters['region_id']);
         }
-    }
-
-    public function updateComplaint(User $user, Complaint $complaint, array $attributes): Complaint
-    {
     }
 }

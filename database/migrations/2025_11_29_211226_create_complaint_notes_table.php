@@ -25,7 +25,6 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
 
-            // note | info_request | info_reply ...
             $table->enum('type', ['note', 'info_request', 'info_reply']);
 
             $table->boolean('is_internal')->default(false);

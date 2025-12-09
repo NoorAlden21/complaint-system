@@ -57,7 +57,6 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
 
-            // وصف الحدث: إنشاء الشكوى، تغيير حالة، طلب معلومات إضافية...
             $table->text('note')->nullable();
 
             $table->timestamps();

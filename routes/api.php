@@ -26,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/complaints/{complaint}/reassign', [ComplaintController::class, 'reassign']);
 
     Route::post('/complaints/{complaint}/request-info', [ComplaintController::class, 'requestMoreInfo']);
+
+    //Route::post('/complaints/{complaint}/restore-version/{version}', [ComplaintController::class, 'restoreVersion']);
 });
 
 //super_admin

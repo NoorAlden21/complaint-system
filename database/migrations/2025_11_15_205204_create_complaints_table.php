@@ -57,7 +57,6 @@ return new class extends Migration
             $table->index('department_id');
             $table->index('region_id');
             $table->index('created_by');
-            //$table->index('assigned_to');
         });
     }
 

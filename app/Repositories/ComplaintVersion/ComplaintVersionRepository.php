@@ -7,6 +7,13 @@ use App\Models\ComplaintVersion;
 
 class ComplaintVersionRepository implements ComplaintVersionRepositoryInterface
 {
+    public function findById(int $id): ?ComplaintVersion
+    {
+        return ComplaintVersion::query()
+            ->with(['category', 'department', 'region', 'attachments', 'versions'])
+            ->find($id);
+    }
+
     public function record(
         Complaint $complaint,
         int $version_number,
