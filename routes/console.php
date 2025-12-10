@@ -17,6 +17,10 @@ Schedule::job(new RunBackupJob)
 Schedule::job(new ReleaseExpiredComplaintLocksJob)
     ->everyFiveMinutes();
 
+// Schedule::job(new RunBackupJob)->everyMinute();
+
+// Schedule::job(new ReleaseExpiredComplaintLocksJob)->everyMinute();
+
 
 Schedule::command('backup:clean')
     ->dailyAt('03:00');     // تنظيف النسخ القديمة
