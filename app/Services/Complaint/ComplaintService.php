@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ComplaintNote;
 use App\Models\ComplaintVersion;
 use Illuminate\Validation\ValidationException;
+use App\Services\UserNotificationService;
 
 class ComplaintService
 {
@@ -26,6 +27,7 @@ class ComplaintService
         protected DepartmentRepositoryInterface $departments,
         protected ComplaintCategoryRepositoryInterface $categories,
         protected ComplaintAttachmentRepositoryInterface $attachments,
+        protected UserNotificationService $userNotifications,
     ) {
     }
 
@@ -229,6 +231,59 @@ class ComplaintService
                     version: $version,
                     user: $user,
                     message: $data['info_request_message']
+                );
+            }
+
+            $citizen = $complaint->creator;
+
+            if ($citizen && isset($changedFields['status'])) {
+                if ($complaint->status === 'needs_more_info') {
+
+                    $this->userNotifications->notifyUser(
+                        $citizen,
+                        type: 'complaint_more_info_requested',
+                        title: __('notifications.complaints.more_info_requested.title'),
+                        body: __('notifications.complaints.more_info_requested.body', [
+                            'reference' => $complaint->reference_number,
+                        ]),
+                        data: [
+                            'type'          => 'complaint_more_info_requested',
+                            'complaint_id'  => (string) $complaint->id,
+                            'status'        => $complaint->status,
+                        ]
+                    );
+                } else {
+                    $this->userNotifications->notifyUser(
+                        $citizen,
+                        type: 'complaint_status_changed',
+                        title: __('notifications.complaints.status_changed.title'),
+                        body: __('notifications.complaints.status_changed.body', [
+                            'reference' => $complaint->reference_number,
+                            'status'    => __('complaints.status.' . $complaint->status),
+                        ]),
+                        data: [
+                            'type'          => 'complaint_status_changed',
+                            'complaint_id'  => (string) $complaint->id,
+                            'status'        => $complaint->status,
+                        ]
+                    );
+                }
+            }
+
+            if (isset($changedFields['department_id']) && $complaint->department_id) {
+                $employees = User::role('employee')
+                    ->where('department_id', $complaint->department_id)
+                    ->get();
+
+                $this->userNotifications->notifyUsers(
+                    $employees,
+                    type: 'complaint_reassigned',
+                    title: __('notifications.complaints.reassigned.title'),
+                    body: __('notifications.complaints.reassigned.body'),
+                    data: [
+                        'type'          => 'complaint_reassigned',
+                        'complaint_id'  => (string) $complaint->id,
+                    ]
                 );
             }
 

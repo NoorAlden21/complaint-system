@@ -5,7 +5,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\Admin\BackupController;
-
+use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\UserNotificationController;
 
 // public
 Route::post('/register', [AuthController::class, 'register']);
@@ -17,6 +18,14 @@ Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
     Route::post('/email/resend-verification', [AuthController::class, 'resendVerificationEmail']);
+    Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+
+    //notifications
+    Route::get('/notifications', [UserNotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [UserNotificationController::class, 'unreadCount']);
+    Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllAsRead']);
+
 
     Route::get('/complaints/meta', [ComplaintController::class, 'meta']);
 
