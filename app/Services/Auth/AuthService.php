@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Notifications\AccountLockedNotification;
 use App\Notifications\PasswordResetCodeNotification;
 use App\Notifications\VerifyEmailCodeNotification;
 use App\Repositories\User\UserRepositoryInterface;
@@ -13,6 +14,9 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
+    protected int $maxFailedAttempts = 5;
+    protected int $lockMinutes       = 10;
+
     public function __construct(
         protected UserRepositoryInterface $users,
         protected VerificationCodeRepositoryInterface $verificationCodes,
@@ -53,10 +57,45 @@ class AuthService
     {
         $user = $this->users->findByEmail($credentials['email']);
 
+        if ($user && $user->isLocked()) {
+            $minutes = $user->locked_until->diffInMinutes(now());
+
+            throw ValidationException::withMessages([
+                'email' => [__('auth.account_locked', ['minutes' => $minutes])],
+            ]);
+        }
+
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
+
+            if ($user) {
+                $user->failed_login_attempts = ($user->failed_login_attempts ?? 0) + 1;
+
+                if ($user->failed_login_attempts >= $this->maxFailedAttempts) {
+                    $user->locked_until = now()->addMinutes($this->lockMinutes);
+                    $user->failed_login_attempts = 0;
+
+                    $this->users->save($user);
+
+                    $user->notify(new AccountLockedNotification($user->locked_until));
+
+                    throw ValidationException::withMessages([
+                        'email' => [__('auth.account_locked', ['minutes' => $this->lockMinutes])],
+                    ]);
+                }
+
+                $this->users->save($user);
+            }
+
             throw ValidationException::withMessages([
                 'email' => [__('auth.invalid_credentials')],
             ]);
+        }
+
+        //if we reach this points then the login successed
+        if ($user->failed_login_attempts > 0 || $user->locked_until) {
+            $user->failed_login_attempts = 0;
+            $user->locked_until = null;
+            $this->users->save($user);
         }
 
         if ($user->hasRole('citizen') && !$user->email_verified_at) {

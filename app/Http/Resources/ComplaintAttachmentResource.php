@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ComplaintAttachmentResource extends JsonResource
 {
@@ -16,6 +17,9 @@ class ComplaintAttachmentResource extends JsonResource
             'size'          => $this->size,
             'created_at'    => $this->created_at?->toISOString(),
 
+            'url'           => $this->path
+                ? Storage::disk('complaints')->url($this->path)
+                : null,
             // 'url' => route('complaints.attachments.download', [$this->complaint_id, $this->id]),
         ];
     }

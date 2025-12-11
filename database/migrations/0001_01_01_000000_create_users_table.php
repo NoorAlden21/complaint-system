@@ -19,6 +19,10 @@ return new class extends Migration
             $table->string('phone_number', 10)->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            $table->unsignedSmallInteger('failed_login_attempts')->default(0);
+            $table->timestamp('locked_until')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });
