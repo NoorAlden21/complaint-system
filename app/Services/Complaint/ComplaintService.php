@@ -68,9 +68,10 @@ class ComplaintService
 
         foreach ($files as $file) {
             $path = $file->store(
-                'complaints/' . now()->format('Y/m/d') . '/' . $complaint->id,
-                $disk
+                now()->format('Y/m/d') . '/' . $complaint->id,
+                'complaints'
             );
+
 
             $this->attachments->createForComplaint($complaint, [
                 'uploaded_by'   => $uploader->id,

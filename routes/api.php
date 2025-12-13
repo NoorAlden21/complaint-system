@@ -3,8 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
-use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\Admin\EmployeeController;
 use App\Http\Controllers\Api\Admin\BackupController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\UserNotificationController;
 
@@ -47,6 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
     Route::post('/employees', [EmployeeController::class, 'store']);
 
+    Route::prefix('users')->group(function () {
+        Route::get('', [UserController::class, 'index']);
+        Route::get('{id}', [UserController::class, 'show']);
+    });
     Route::prefix('backups')->group(function () {
         Route::get('', [BackupController::class, 'index']);
         Route::get('/last-successful', [BackupController::class, 'lastSuccessful']);

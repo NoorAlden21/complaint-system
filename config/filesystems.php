@@ -58,9 +58,9 @@ return [
 
         'complaints' => [
             'driver' => 'local',
-            'root' => storage_path('app/complaints'),
+            'root' => storage_path('app/public/complaints'),
             'url' => env('APP_URL') . '/storage/complaints',
-            'visibility' => 'private',
+            'visibility' => 'public',
         ],
 
         'backups' => [

@@ -12,6 +12,7 @@ use App\Models\ComplaintVersion;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class DemoDataSeeder extends Seeder
 {
@@ -143,20 +144,29 @@ class DemoDataSeeder extends Seeder
                     'note'          => 'النسخة الأولى من الشكوى (تجريبية من seeder).',
                 ]);
 
-                // 4) لبعض الشكاوى فقط نضيف مرفقات
                 if (random_int(0, 1) === 1) {
                     $attachmentsCount = random_int(1, 3);
 
                     for ($a = 1; $a <= $attachmentsCount; $a++) {
-                        $fakeFileName = "attachment_{$complaint->id}_{$a}.pdf";
+                        // اسم الملف
+                        $fakeFileName = "attachment_{$complaint->id}_{$a}.txt";
+
+                        // مسار داخل disk "complaints" (بدون prefix complaints/ إذا disk root أصلاً complaints)
+                        $relativePath = now()->format('Y/m/d') . '/' . $complaint->id . '/' . $fakeFileName;
+
+                        // إنشاء ملف فعلي للتجربة (حتى URL ما يعطي 404)
+                        Storage::disk('complaints')->put(
+                            $relativePath,
+                            "Demo attachment for complaint {$complaint->reference_number}"
+                        );
 
                         ComplaintAttachment::create([
                             'complaint_id'     => $complaint->id,
                             'uploaded_by'      => $user->id,
                             'original_name'    => $fakeFileName,
-                            'path'             => "complaints/demo/{$complaint->id}/{$fakeFileName}",
-                            'mime_type'        => 'application/pdf',
-                            'size'             => random_int(10_000, 500_000), // بالحجم بالبايت
+                            'path'             => $relativePath,
+                            'mime_type'        => 'text/plain',
+                            'size'             => Storage::disk('complaints')->size($relativePath),
                             'added_in_version' => 1,
                             'removed_in_version' => null,
                         ]);

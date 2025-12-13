@@ -17,9 +17,10 @@ class ComplaintAttachmentResource extends JsonResource
             'size'          => $this->size,
             'created_at'    => $this->created_at?->toISOString(),
 
-            'url'           => $this->path
-                ? Storage::disk('complaints')->url($this->path)
+            'url' => $this->path
+                ? $request->getSchemeAndHttpHost() . '/storage/complaints/' . ltrim($this->path, '/')
                 : null,
+
             // 'url' => route('complaints.attachments.download', [$this->complaint_id, $this->id]),
         ];
     }

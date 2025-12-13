@@ -23,6 +23,7 @@ class User extends Authenticatable
         'phone_number',
         'email',
         'password',
+        'department_id',
     ];
 
     /**
@@ -47,6 +48,11 @@ class User extends Authenticatable
             'password' => 'hashed',
             'locked_until'      => 'datetime',
         ];
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class, 'created_by');
     }
 
     public function deviceTokens()
