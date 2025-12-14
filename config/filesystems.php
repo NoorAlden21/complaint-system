@@ -68,7 +68,11 @@ return [
             'root'   => storage_path('app/backups'),
         ],
 
-
+        'reports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/reports'),
+            'visibility' => 'private',
+        ],
     ],
 
     /*

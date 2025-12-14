@@ -22,6 +22,10 @@ use App\Repositories\ComplaintCategory\ComplaintCategoryRepository;
 use App\Repositories\ComplaintCategory\ComplaintCategoryRepositoryInterface;
 use App\Repositories\ComplaintVersion\ComplaintVersionRepository;
 use App\Repositories\ComplaintVersion\ComplaintVersionRepositoryInterface;
+use App\Repositories\Reports\PerformanceStatsRepositoryInterface;
+use App\Repositories\Reports\PerformanceStatsRepository;
+use App\Repositories\Reports\ReportExportRepositoryInterface;
+use App\Repositories\Reports\ReportExportRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -70,6 +74,16 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             BackupLogRepositoryInterface::class,
             BackupLogRepository::class
+        );
+
+        $this->app->bind(
+            PerformanceStatsRepositoryInterface::class,
+            PerformanceStatsRepository::class
+        );
+
+        $this->app->bind(
+            ReportExportRepositoryInterface::class,
+            ReportExportRepository::class
         );
     }
 

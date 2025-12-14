@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\Admin\EmployeeController;
 use App\Http\Controllers\Api\Admin\BackupController;
+use App\Http\Controllers\Api\Admin\PerformanceReportController;
+use App\Http\Controllers\Api\Admin\PerformanceStatsController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\UserNotificationController;
@@ -52,10 +54,20 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
         Route::get('', [UserController::class, 'index']);
         Route::get('{id}', [UserController::class, 'show']);
     });
+
     Route::prefix('backups')->group(function () {
         Route::get('', [BackupController::class, 'index']);
         Route::get('/last-successful', [BackupController::class, 'lastSuccessful']);
         Route::get('/{backupLog}/download', [BackupController::class, 'download']);
         Route::post('', [BackupController::class, 'store']);
     });
+
+    Route::get('/stats/performance', [PerformanceStatsController::class, 'show']);
+
+    Route::get('/reports/performance', [PerformanceReportController::class, 'index']);
+    Route::post('/reports/performance', [PerformanceReportController::class, 'store']);
+    Route::get('/reports/{id}', [PerformanceReportController::class, 'show']);
+
+    Route::get('/reports/{id}/download', [PerformanceReportController::class, 'download'])
+        ->name('admin.reports.download');
 });
