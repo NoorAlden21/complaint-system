@@ -64,6 +64,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
 
     Route::get('/stats/performance', [PerformanceStatsController::class, 'show']);
 
+    Route::get('reports', [PerformanceReportController::class, 'index']);
     Route::get('/reports/performance', [PerformanceReportController::class, 'index']);
     Route::post('/reports/performance', [PerformanceReportController::class, 'store']);
     Route::get('/reports/{id}', [PerformanceReportController::class, 'show']);

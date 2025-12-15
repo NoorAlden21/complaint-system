@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\ReportExport;
+use App\Repositories\Reports\ReportExportRepositoryInterface;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mpdf\Mpdf;
@@ -10,8 +11,16 @@ use Mpdf\Mpdf;
 class PerformanceReportService
 {
     public function __construct(
+        protected ReportExportRepositoryInterface $reportsRepo,
         protected PerformanceStatsService $statsService
     ) {
+    }
+
+    public function list(array $filters = [], int $perPage = 15)
+    {
+        $filters['type'] = 'performance';
+
+        return $this->reportsRepo->paginate($filters, $perPage);
     }
 
     public function generate(ReportExport $report): ReportExport
@@ -132,9 +141,8 @@ class PerformanceReportService
             $report->file_disk = $disk;
             $report->file_path = $path;
             $report->file_size = Storage::disk($disk)->size($path);
-            $report->save();
 
-            return $report;
+            return $this->reportsRepo->save($report);
         } finally {
             app()->setLocale($oldLocale);
         }

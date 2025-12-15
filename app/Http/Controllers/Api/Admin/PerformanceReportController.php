@@ -19,6 +19,16 @@ class PerformanceReportController extends Controller
     ) {
     }
 
+    public function index(Request $request)
+    {
+        $filters = $request->only(['type', 'status']);
+        $perPage = (int) $request->query('per_page', 15);
+
+        $reports = $this->reports->paginate($filters, $perPage);
+
+        return ReportExportResource::collection($reports)->response();
+    }
+
     public function store(CreatePerformanceReportRequest $request)
     {
         $user = $request->user();
