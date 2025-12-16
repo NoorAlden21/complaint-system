@@ -223,6 +223,18 @@ class AuthService
         ];
     }
 
+    public function logout(User $user, bool $allDevices = false): void
+    {
+        if ($allDevices) {
+            $user->tokens()->delete();
+            return;
+        }
+
+        $token = $user->currentAccessToken();
+        if ($token) {
+            $token->delete();
+        }
+    }
 
     protected function generateCode(): string
     {

@@ -12,7 +12,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResendVerificationEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
-
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -101,6 +101,18 @@ class AuthController extends Controller
                 'user'  => new UserResource($result['user']),
                 'token' => $result['token'],
             ],
+        ]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $this->authService->logout(
+            user: $request->user(),
+            allDevices: $request->boolean('all') // optional: ?all=true
+        );
+
+        return response()->json([
+            'message' => __('auth.logout_success'),
         ]);
     }
 }

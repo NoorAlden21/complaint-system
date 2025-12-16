@@ -9,8 +9,9 @@ return [
     'login_success'            => 'Logged in successfully.',
     'invalid_credentials'      => 'The provided credentials are incorrect.',
     'email_not_verified'       => 'Please verify your email address before logging in.',
-    'verification_email_resent' => 'تم إرسال كود تفعيل جديد إلى بريدك الإلكتروني.',
-    'email_already_verified'   => 'بريدك الإلكتروني مفعل بالفعل.',
+    'verification_email_resent' => 'A new verification code has been sent to your email.',
+    'email_already_verified'   => 'Your email is already verified.',
+    'logout_success' => 'Logged out successfully.',
 
     'password_reset_code_sent' => 'If your email exists in our system, a reset code has been sent.',
     'password_reset_success'   => 'Your password has been reset successfully.',

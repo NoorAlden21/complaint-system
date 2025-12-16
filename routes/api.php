@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
     Route::post('/email/resend-verification', [AuthController::class, 'resendVerificationEmail']);
     Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
     //notifications
     Route::get('/notifications', [UserNotificationController::class, 'index']);
