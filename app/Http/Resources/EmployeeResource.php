@@ -11,13 +11,22 @@ class EmployeeResource extends JsonResource
         return [
             'id'         => $this->id,
             'name'       => $this->name,
+            'phone_number'      => $this->phone_number,
             'email'      => $this->email,
             'role'       => $this->roles->pluck('name')->first(),
             // 'department' => [
             //     'id'   => $this->department?->id,
             //     'name' => $this->department?->name,
             // ],
-            'phone'      => $this->employeeProfile->phone,
+
+            'department_id' => $this->department_id,
+            'department' => $this->whenLoaded('department', function () {
+                return [
+                    'id'   => $this->department->id,
+                    'name' => $this->department->name,
+                ];
+            }),
+
             'created_at' => $this->created_at,
         ];
     }

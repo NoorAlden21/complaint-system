@@ -60,4 +60,42 @@ class UserRepository implements UserRepositoryInterface
 
         return $user;
     }
+
+    public function getAllEmployees()
+    {
+        return User::with(['department'])->role('employee')
+            ->select(['id', 'name', 'email', 'phone_number', 'department_id', 'created_at'])
+            ->get();
+    }
+
+    public function findEmployeeById(int $id): ?User
+    {
+        return User::with(['department'])->role('employee')
+            ->select(['id', 'name', 'email', 'phone_number', 'department_id', 'created_at'])
+            ->find($id);
+    }
+
+    public function updateEmployee(int $id, array $data): ?User
+    {
+        $employee = $this->findEmployeeById($id);
+
+        if ($employee) {
+            foreach ($data as $key => $value) {
+                $employee->$key = $value;
+            }
+
+            return $this->save($employee);
+        }
+
+        return null;
+    }
+
+    public function deleteEmployee(int $id): void
+    {
+        $employee = $this->findEmployeeById($id);
+
+        if ($employee) {
+            $employee->delete();
+        }
+    }
 }

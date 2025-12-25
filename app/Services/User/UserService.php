@@ -26,9 +26,4 @@ class UserService
     {
         return $this->userRepository->findByEmail($email);
     }
-
-    public function createEmployee(array $data): User
-    {
-        return $this->userRepository->createEmployee($data);
-    }
 }

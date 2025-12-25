@@ -49,7 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
 //super_admin
 
 Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
-    Route::post('/employees', [EmployeeController::class, 'store']);
+    // Route::post('/employees', [EmployeeController::class, 'store']);
+    Route::apiResource('/employees', EmployeeController::class);
 
     Route::prefix('users')->group(function () {
         Route::get('', [UserController::class, 'index']);

@@ -53,5 +53,7 @@ class EmployeesDemoSeeder extends Seeder
                 ));
             }
         }
+
+        Log::channel('employee_tokens')->info('============================================================');
     }
 }

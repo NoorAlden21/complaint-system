@@ -100,6 +100,8 @@ class DemoDataSeeder extends Seeder
 
             $users->push($user);
         }
+
+        Log::channel('user_tokens')->info('============================================================');
         // 3) لكل مستخدم ننشئ شكوى أو شكوتين، وبعضها لها مرفقات
         foreach ($users as $user) {
             $complaintCount = random_int(1, 2);

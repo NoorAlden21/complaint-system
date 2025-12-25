@@ -17,4 +17,12 @@ interface UserRepositoryInterface
     public function save(User $user): User;
 
     public function createEmployee(array $data): User;
+
+    public function getAllEmployees();
+
+    public function findEmployeeById(int $id): ?User;
+
+    public function updateEmployee(int $id, array $data): ?User;
+
+    public function deleteEmployee(int $id): void;
 }
