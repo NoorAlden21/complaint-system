@@ -41,7 +41,7 @@ class InitialUsersSeeder extends Seeder
         $employeeToken   = $employee->createToken('employee_token')->plainTextToken;
 
         Log::info('===== Seeded API Tokens =====');
-        Log::info('Super Admin Token: ' . $superAdminToken);
+        Log::channel('employee_tokens')->info('Super Admin Token: ' . $superAdminToken);
         Log::info('Employee Token: ' . $employeeToken);
         Log::info('=============================');
     }

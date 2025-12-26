@@ -18,6 +18,7 @@ use App\Models\ComplaintNote;
 use App\Models\ComplaintVersion;
 use Illuminate\Validation\ValidationException;
 use App\Services\UserNotificationService;
+use Illuminate\Support\Facades\Cache;
 
 class ComplaintService
 {
@@ -150,16 +151,17 @@ class ComplaintService
 
     public function getCreateMetadata(User $user): array
     {
-        $departments = $this->departments->allActive();
-        $categories  = $this->categories->allActive();
-        $regions = Region::all();
+        $locale = app()->getLocale();
 
+        $cacheKey = "complaints:meta:create:{$locale}:v1";
 
-        return [
-            'departments' => $departments,
-            'categories'  => $categories,
-            'regions' => $regions
-        ];
+        return Cache::rememberForever($cacheKey, function () {
+            return [
+                'departments' => $this->departments->allActive(),
+                'categories'  => $this->categories->allActive(),
+                'regions'     => Region::query()->orderBy('id')->get(),
+            ];
+        });
     }
 
     public function updateComplaint(

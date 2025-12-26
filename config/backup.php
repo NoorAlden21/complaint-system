@@ -17,7 +17,7 @@ return [
                 'include' => [
                     //base_path(),
 
-                    storage_path('app/complaints'),
+                    storage_path('app/public/complaints'),
 
                 ],
 
@@ -153,9 +153,13 @@ return [
             /*
              * The disk names on which the backups will be stored.
              */
+            // 'disks' => [
+            //     'backups',
+            // ],
             'disks' => [
-                'backups',
+                'backups', 'idrive_e2_backups'
             ],
+
         ],
 
         /*
@@ -258,12 +262,14 @@ return [
     'monitor_backups' => [
         [
             'name' => env('APP_NAME', 'laravel-backup'),
-            'disks' => ['local'],
+            'disks' => ['backups', 'idrive_e2_backups'],
             'health_checks' => [
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
             ],
         ],
+
+
 
         /*
         [

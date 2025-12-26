@@ -73,6 +73,18 @@ return [
             'root' => storage_path('app/reports'),
             'visibility' => 'private',
         ],
+
+        'idrive_e2_backups' => [
+            'driver' => 's3',
+            'key' => env('IDRIVE_E2_ACCESS_KEY_ID'),
+            'secret' => env('IDRIVE_E2_SECRET_ACCESS_KEY'),
+            'region' => env('IDRIVE_E2_REGION', 'us-west-1'),
+            'bucket' => env('IDRIVE_E2_BUCKET'),
+            'endpoint' => env('IDRIVE_E2_ENDPOINT'),
+            'use_path_style_endpoint' => env('IDRIVE_E2_PATH_STYLE', true),
+            'throw' => false,
+        ],
+
     ],
 
     /*

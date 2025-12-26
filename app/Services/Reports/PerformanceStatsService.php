@@ -9,6 +9,7 @@ use App\Repositories\Reports\PerformanceStatsRepositoryInterface;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Lang;
 
 class PerformanceStatsService
@@ -20,7 +21,6 @@ class PerformanceStatsService
 
     public function compute(array $filters): array
     {
-        // Normalize dates
         $from = $filters['from_at'] ?? $filters['from'] ?? null;
         $to   = $filters['to_at']   ?? $filters['to']   ?? null;
 
@@ -30,6 +30,32 @@ class PerformanceStatsService
         $filters['from_at'] = $filters['from_at']->startOfDay();
         $filters['to_at']   = $filters['to_at']->endOfDay();
 
+        $cacheKey = $this->cacheKey($filters);
+
+        $ttl = now()->addMinutes(3);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($filters) {
+            return $this->computeUncached($filters);
+        });
+    }
+
+    protected function cacheKey(array $filters): string
+    {
+        // مهم: حول التاريخ لـ string حتى يصير key ثابت
+        $payload = [
+            'v' => 1, // بدّلها إذا عدّلت شكل الـ output لاحقاً
+            'from' => $filters['from_at']->toDateString(),
+            'to'   => $filters['to_at']->toDateString(),
+            'department_id' => $filters['department_id'] ?? null,
+            'region_id'     => $filters['region_id'] ?? null,
+            'category_id'   => $filters['category_id'] ?? null,
+        ];
+
+        return 'stats:performance:' . sha1(json_encode($payload));
+    }
+
+    protected function computeUncached(array $filters): array
+    {
         $totalCreated  = (int) $this->repo->countCreated($filters);
         $totalResolved = (int) $this->repo->countResolved($filters);
         $totalClosed   = (int) $this->repo->countClosed($filters);
@@ -40,14 +66,12 @@ class PerformanceStatsService
         $slaBreached   = (int) $this->repo->slaBreachedCount($filters);
         $slaRate       = ($slaMet + $slaBreached) > 0 ? ($slaMet / ($slaMet + $slaBreached)) : null;
 
-        // breakdown raw
         $byStatusRaw    = $this->repo->groupByStatus($filters);
         $byPriorityRaw  = $this->repo->groupByPriority($filters);
         $byDeptRaw      = $this->repo->groupByDepartment($filters);
         $byRegionRaw    = $this->repo->groupByRegion($filters);
         $byCategoryRaw  = $this->repo->groupByCategory($filters);
 
-        // trends raw
         $createdRaw  = $this->repo->createdPerDay($filters);
         $resolvedRaw = $this->repo->resolvedPerDay($filters);
 
@@ -58,12 +82,10 @@ class PerformanceStatsService
             resolvedRaw: $resolvedRaw
         );
 
-        // IDs
         $deptIds = collect($byDeptRaw)->pluck('id')->filter()->unique()->values()->all();
         $regIds  = collect($byRegionRaw)->pluck('id')->filter()->unique()->values()->all();
         $catIds  = collect($byCategoryRaw)->pluck('id')->filter()->unique()->values()->all();
 
-        // Fetch ONLY EN columns
         $departments = Department::whereIn('id', $deptIds)->get(['id', 'name_en'])->keyBy('id');
         $regions     = Region::whereIn('id', $regIds)->get(['id', 'name_en'])->keyBy('id');
         $categories  = ComplaintCategory::whereIn('id', $catIds)->get(['id', 'label_en'])->keyBy('id');
@@ -137,13 +159,11 @@ class PerformanceStatsService
         ];
     }
 
-    /** If value is empty OR contains Arabic chars -> fallback */
     protected function safeEnglish(?string $value, string $fallback): string
     {
         $value = $value !== null ? trim($value) : '';
         if ($value === '') return $fallback;
 
-        // Arabic unicode blocks
         if (preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $value)) {
             return $fallback;
         }
@@ -154,10 +174,8 @@ class PerformanceStatsService
     protected function normalizeStatusKey(string $value): string
     {
         $keys = ['pending', 'needs_more_info', 'open', 'in_progress', 'resolved', 'closed', 'rejected'];
-
         if (in_array($value, $keys, true)) return $value;
 
-        // Try reverse match against known translations (AR/EN) if your DB accidentally stores labels
         foreach ($keys as $k) {
             if ($value === Lang::get("complaints.status.$k", [], 'ar')) return $k;
             if ($value === Lang::get("complaints.status.$k", [], 'en')) return $k;
@@ -169,7 +187,6 @@ class PerformanceStatsService
     protected function normalizePriorityKey(string $value): string
     {
         $keys = ['low', 'medium', 'high', 'urgent'];
-
         if (in_array($value, $keys, true)) return $value;
 
         foreach ($keys as $k) {
@@ -213,11 +230,13 @@ class PerformanceStatsService
     {
         return collect($rows)->map(function ($r) use ($total) {
             $rawKey = (string) ($r['key'] ?? '');
+            $count  = (int) ($r['count'] ?? 0);
+
             return [
                 'key' => $rawKey,
                 'label' => $this->statusLabel($rawKey),
-                'count' => (int) ($r['count'] ?? 0),
-                'percentage' => $total > 0 ? (((int) ($r['count'] ?? 0)) / $total) : 0,
+                'count' => $count,
+                'percentage' => $total > 0 ? ($count / $total) : 0,
             ];
         })->values()->all();
     }
@@ -226,11 +245,13 @@ class PerformanceStatsService
     {
         return collect($rows)->map(function ($r) use ($total) {
             $rawKey = (string) ($r['key'] ?? '');
+            $count  = (int) ($r['count'] ?? 0);
+
             return [
                 'key' => $rawKey,
                 'label' => $this->priorityLabel($rawKey),
-                'count' => (int) ($r['count'] ?? 0),
-                'percentage' => $total > 0 ? (((int) ($r['count'] ?? 0)) / $total) : 0,
+                'count' => $count,
+                'percentage' => $total > 0 ? ($count / $total) : 0,
             ];
         })->values()->all();
     }
