@@ -2,6 +2,12 @@
 
 return [
     'complaints' => [
+
+        'created' => [
+            'title' => 'تم إنشاء شكوى جديدة',
+            'body'  => 'تم إنشاء شكوى جديدة برقم المرجع :reference.',
+        ],
+
         'status_changed' => [
             'title' => 'تم تحديث حالة الشكوى',
             'body'  => 'تم تحديث حالة الشكوى :reference إلى الحالة :status.',

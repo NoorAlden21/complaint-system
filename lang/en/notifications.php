@@ -2,6 +2,11 @@
 
 return [
     'complaints' => [
+        'created' => [
+            'title' => 'New Complaint Created',
+            'body'  => 'A new complaint has been created with reference number :reference.',
+        ],
+
         'status_changed' => [
             'title' => 'Complaint status updated',
             'body'  => 'Your complaint :reference status has been updated to :status.',

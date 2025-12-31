@@ -49,6 +49,27 @@ class ComplaintService
                 note: null
             );
 
+            $admins = User::role('super_admin')->get();
+            $employees = User::role('employee')
+                ->where('department_id', $complaint->department_id)
+                ->get();
+
+            $users = $admins->merge($employees);
+
+            $this->userNotifications->notifyUsers(
+                $users,
+                type: 'complaint_created',
+                title: __('notifications.complaints.created.title'),
+                body: __('notifications.complaints.created.body', [
+                    'reference' => $complaint->reference_number,
+                ]),
+                data: [
+                    'type'          => 'complaint_created',
+                    'complaint_id'  => (string) $complaint->id,
+                    'status'        => $complaint->status,
+                ]
+            );
+
             return $complaint;
         });
 
