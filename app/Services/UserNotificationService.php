@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Complaint;
 use App\Models\User;
 use App\Models\UserNotification;
 
@@ -42,5 +43,31 @@ class UserNotificationService
         foreach ($users as $user) {
             $this->notifyUser($user, $type, $title, $body, $data);
         }
+    }
+
+    public function notifyComplaintAudience(
+        Complaint $complaint,
+        string $type,
+        string $title,
+        string $body,
+        array $data = []
+    ): void {
+        $admins = User::role('super_admin')->get();
+
+        $employees = User::role('employee')
+            ->when($complaint->department_id, function ($q) use ($complaint) {
+                $q->where('department_id', $complaint->department_id);
+            }, function ($q) {
+                $q->whereRaw('1=0');
+            })
+            ->get();
+
+        $users = $admins->merge($employees)->unique('id')->values();
+
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        $this->notifyUsers($users, $type, $title, $body, $data);
     }
 }

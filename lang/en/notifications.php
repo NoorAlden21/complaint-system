@@ -23,5 +23,10 @@ return [
         ],
 
         'all_marked_as_read' => 'All notifications have been marked as read.',
+
+        'info_replied' => [
+            'title' => 'Reply received',
+            'body'  => 'The user replied to the information request for complaint :reference.',
+        ],
     ],
 ];

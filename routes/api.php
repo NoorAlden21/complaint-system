@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/complaints/{complaint}/reassign', [ComplaintController::class, 'reassign']);
 
     Route::post('/complaints/{complaint}/request-info', [ComplaintController::class, 'requestMoreInfo']);
+    Route::post('/complaints/{complaint}/reply-info', [ComplaintController::class, 'replyToInfoRequest']);
 
     Route::post('/complaints/{complaint}/lock', [ComplaintController::class, 'lock']);
     Route::post('/complaints/{complaint}/unlock', [ComplaintController::class, 'unlock']);
