@@ -9,6 +9,7 @@ use App\Http\Requests\Complaint\ComplaintMetaRequest;
 use App\Http\Requests\Complaint\UpdateComplaintRequest;
 use App\Http\Requests\Complaint\ReassignComplaintRequest;
 use App\Http\Requests\Complaint\ComplaintRequestMoreInfoRequest;
+use App\Http\Requests\Complaint\ReplyToInfoRequestRequest;
 use App\Http\Resources\ComplaintResource;
 use App\Http\Resources\ComplaintCategoryResource;
 use App\Http\Resources\DepartmentResource;
@@ -105,6 +106,24 @@ class ComplaintController extends Controller
         ))->response();
     }
 
+    public function replyToInfoRequest(ReplyToInfoRequestRequest $request, int $complaint): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $attachments = $request->file('attachments', []);
+
+        $model = $this->complaintService->replyToInfoRequest(
+            user: $user,
+            complaintId: $complaint,
+            message: $data['message'],
+            attachments: $attachments
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments', 'versions.notes'])
+        ))->response();
+    }
 
     public function show(ComplaintIndexRequest $request, int $complaint): JsonResponse
     {
