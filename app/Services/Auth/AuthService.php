@@ -87,8 +87,10 @@ final class AuthService
             context: ['user_id' => $user->id]
         );
 
+        $user = $user->fresh()->load('roles');
+
         return [
-            'user'  => $user->fresh(),
+            'user'  => $user->fresh()->load('roles'),
             'token' => $token,
         ];
     }
