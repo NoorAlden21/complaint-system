@@ -15,4 +15,6 @@ interface ComplaintVersionRepositoryInterface
         int $changedBy,
         ?string $note = null
     ): ComplaintVersion;
+
+    public function findByComplaintAndNumber(int $complaintId, int $versionNumber): ?ComplaintVersion;
 }

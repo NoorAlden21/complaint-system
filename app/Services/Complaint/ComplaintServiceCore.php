@@ -15,9 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\ComplaintNote;
 use App\Models\ComplaintVersion;
 use Illuminate\Validation\ValidationException;
-use App\Services\UserNotificationService;
 use Illuminate\Support\Facades\Cache;
-use App\Models\User as UserModel;
 
 class ComplaintServiceCore
 {
@@ -27,7 +25,6 @@ class ComplaintServiceCore
         protected DepartmentRepositoryInterface $departments,
         protected ComplaintCategoryRepositoryInterface $categories,
         protected ComplaintAttachmentRepositoryInterface $attachments,
-        protected UserNotificationService $userNotifications,
     ) {
     }
 
@@ -45,20 +42,6 @@ class ComplaintServiceCore
             version_number: 1,
             changedBy: $creator->id,
             note: null
-        );
-
-        $this->userNotifications->notifyComplaintAudience(
-            complaint: $complaint,
-            type: 'complaint_created',
-            title: __('notifications.complaints.created.title'),
-            body: __('notifications.complaints.created.body', [
-                'reference' => $complaint->reference_number,
-            ]),
-            data: [
-                'type'          => 'complaint_created',
-                'complaint_id'  => (string) $complaint->id,
-                'status'        => $complaint->status,
-            ]
         );
 
         return $complaint;
@@ -143,6 +126,117 @@ class ComplaintServiceCore
         return $complaint;
     }
 
+    public function restoreComplaintVersionDb(
+        User $user,
+        int $complaintId,
+        int $versionNumber,
+        int $expectedRowVersion,
+        ?string $note = null
+    ): Complaint {
+        $complaint = $this->complaints->findByIdForUpdate($complaintId);
+
+        if (!$complaint) {
+            throw new ModelNotFoundException('Complaint not found.');
+        }
+
+        if ($user->hasRole('employee')) {
+            if ((int) $complaint->department_id !== (int) $user->department_id) {
+                throw new ModelNotFoundException('Complaint not found or not accessible.');
+            }
+
+            if (!$complaint->isLocked() || (int) $complaint->locked_by !== (int) $user->id) {
+                throw ValidationException::withMessages([
+                    'complaint' => ['يجب أن تكون الشكوى مقفولة عليك قبل الاستعادة.'],
+                ]);
+            }
+        }
+
+        $currentRowVersion = (int) ($complaint->row_version ?? 0);
+        if ($expectedRowVersion !== $currentRowVersion) {
+            throw ValidationException::withMessages([
+                'row_version' => [__('complaints.optimistic_lock_conflict')],
+            ]);
+        }
+
+        $target = $this->complaintVersions->findByComplaintAndNumber($complaintId, $versionNumber);
+
+        if (!$target) {
+            throw new ModelNotFoundException('Target version not found.');
+        }
+
+        if ($user->hasRole('employee')) {
+            if ((int) $target->department_id !== (int) $user->department_id) {
+                throw ValidationException::withMessages([
+                    'version' => ['لا يمكنك استعادة نسخة تابعة لقسم مختلف.'],
+                ]);
+            }
+        }
+
+        $fields = [
+            'status', 'title', 'description',
+            'category_id', 'department_id', 'region_id', 'priority',
+        ];
+
+        $hasChanges = false;
+        foreach ($fields as $f) {
+            if ($complaint->{$f} !== $target->{$f}) {
+                $hasChanges = true;
+                break;
+            }
+        }
+
+        if (!$hasChanges) {
+            return $complaint;
+        }
+
+        $complaint->status        = $target->status;
+        $complaint->title         = $target->title;
+        $complaint->description   = $target->description;
+        $complaint->category_id   = $target->category_id;
+        $complaint->department_id = $target->department_id;
+        $complaint->region_id     = $target->region_id;
+        $complaint->priority      = $target->priority;
+
+        if ($complaint->status !== 'resolved') {
+            $complaint->resolved_at = null;
+        } elseif ($complaint->resolved_at === null) {
+            $complaint->resolved_at = now();
+        }
+
+        if ($complaint->status !== 'closed') {
+            $complaint->closed_at = null;
+        } elseif ($complaint->closed_at === null) {
+            $complaint->closed_at = now();
+        }
+
+        $complaint->row_version = $currentRowVersion + 1;
+        $complaint->save();
+
+        $restoreNote = "تمت الاستعادة إلى الإصدار رقم {$versionNumber}";
+        if ($note !== null && trim($note) !== '') {
+            $restoreNote .= ' - ' . trim($note);
+        }
+
+        $newVersion = $this->createVersionSnapshot(
+            complaint: $complaint,
+            user: $user,
+            note: $restoreNote,
+        );
+
+
+        ComplaintNote::create([
+            'complaint_id'         => $complaint->id,
+            'complaint_version_id' => $newVersion->id,
+            'created_by'           => $user->id,
+            'type'                 => 'note',
+            'is_internal'          => true,
+            'message'              => $restoreNote,
+        ]);
+
+        return $complaint;
+    }
+
+
     public function getCreateMetadata(User $user): array
     {
         $locale = app()->getLocale();
@@ -157,9 +251,13 @@ class ComplaintServiceCore
         });
     }
 
-    public function updateComplaint(User $user, int $complaintId, array $data): Complaint
+    /**
+     *
+     * @return array{complaint: Complaint, changed_fields: array}
+     */
+    public function updateComplaintDb(User $user, int $complaintId, array $data): array
     {
-        $expectedVersion = (int) ($data['row_version'] ?? -1); // optimistic lock
+        $expectedVersion = (int) ($data['row_version'] ?? -1);
 
         $complaint = $this->complaints->findByIdForUpdate($complaintId);
 
@@ -181,7 +279,7 @@ class ComplaintServiceCore
             }
 
             if ($complaint->locked_by === $user->id) {
-                $this->complaints->lock($complaint, $user->id, now()->addMinutes(15));
+                $this->complaints->lock($complaint, $user->id, now()->addMinutes(1));
             }
         }
 
@@ -192,7 +290,7 @@ class ComplaintServiceCore
         $this->applyDepartmentChange($complaint, $data, $changedFields);
 
         if (empty($changedFields)) {
-            return $complaint;
+            return ['complaint' => $complaint, 'changed_fields' => []];
         }
 
         $complaint->row_version++;
@@ -222,59 +320,10 @@ class ComplaintServiceCore
             );
         }
 
-        $citizen = $complaint->creator;
-
-        if ($citizen && isset($changedFields['status'])) {
-            if ($complaint->status === 'needs_more_info') {
-                $this->userNotifications->notifyUser(
-                    $citizen,
-                    type: 'complaint_more_info_requested',
-                    title: __('notifications.complaints.more_info_requested.title'),
-                    body: __('notifications.complaints.more_info_requested.body', [
-                        'reference' => $complaint->reference_number,
-                    ]),
-                    data: [
-                        'type'          => 'complaint_more_info_requested',
-                        'complaint_id'  => (string) $complaint->id,
-                        'status'        => $complaint->status,
-                    ]
-                );
-            } else {
-                $this->userNotifications->notifyUser(
-                    $citizen,
-                    type: 'complaint_status_changed',
-                    title: __('notifications.complaints.status_changed.title'),
-                    body: __('notifications.complaints.status_changed.body', [
-                        'reference' => $complaint->reference_number,
-                        'status'    => __('complaints.status.' . $complaint->status),
-                    ]),
-                    data: [
-                        'type'          => 'complaint_status_changed',
-                        'complaint_id'  => (string) $complaint->id,
-                        'status'        => $complaint->status,
-                    ]
-                );
-            }
-        }
-
-        if (isset($changedFields['department_id']) && $complaint->department_id) {
-            $employees = UserModel::role('employee')
-                ->where('department_id', $complaint->department_id)
-                ->get();
-
-            $this->userNotifications->notifyUsers(
-                $employees,
-                type: 'complaint_reassigned',
-                title: __('notifications.complaints.reassigned.title'),
-                body: __('notifications.complaints.reassigned.body'),
-                data: [
-                    'type'          => 'complaint_reassigned',
-                    'complaint_id'  => (string) $complaint->id,
-                ]
-            );
-        }
-
-        return $complaint;
+        return [
+            'complaint' => $complaint,
+            'changed_fields' => $changedFields,
+        ];
     }
 
     public function replyToInfoRequestDb(User $user, int $complaintId, string $message): array
@@ -311,20 +360,6 @@ class ComplaintServiceCore
             message: $message
         );
 
-        $this->userNotifications->notifyComplaintAudience(
-            complaint: $complaint,
-            type: 'complaint_info_replied',
-            title: __('notifications.complaints.info_replied.title'),
-            body: __('notifications.complaints.info_replied.body', [
-                'reference' => $complaint->reference_number,
-            ]),
-            data: [
-                'type'         => 'complaint_info_replied',
-                'complaint_id' => (string) $complaint->id,
-                'status'       => $complaint->status,
-            ]
-        );
-
         return [$complaint, $version];
     }
 
@@ -340,7 +375,6 @@ class ComplaintServiceCore
         ]);
     }
 
-    // ===== Helpers =====
 
     protected function applyStatusChange(Complaint $complaint, array $data, array &$changedFields): void
     {

@@ -44,8 +44,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/complaints/{complaint}/lock', [ComplaintController::class, 'lock']);
     Route::post('/complaints/{complaint}/unlock', [ComplaintController::class, 'unlock']);
 
-    //Route::post('/complaints/{complaint}/restore-version/{version}', [ComplaintController::class, 'restoreVersion']);
+    Route::post('/complaints/{complaint}/restore-version/{version}', [ComplaintController::class, 'restoreVersion']);
+
+    Route::post(
+        '/complaints/{complaint}/versions/{version_number}/restore',
+        [ComplaintController::class, 'restoreVersion']
+    )->middleware('role:employee|super_admin');
 });
+
 
 //super_admin
 

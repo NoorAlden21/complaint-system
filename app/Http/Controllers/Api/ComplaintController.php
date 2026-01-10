@@ -10,6 +10,7 @@ use App\Http\Requests\Complaint\UpdateComplaintRequest;
 use App\Http\Requests\Complaint\ReassignComplaintRequest;
 use App\Http\Requests\Complaint\ComplaintRequestMoreInfoRequest;
 use App\Http\Requests\Complaint\ReplyToInfoRequestRequest;
+use App\Http\Requests\Complaint\RestoreComplaintVersionRequest;
 use App\Http\Resources\ComplaintResource;
 use App\Http\Resources\ComplaintCategoryResource;
 use App\Http\Resources\DepartmentResource;
@@ -134,6 +135,28 @@ class ComplaintController extends Controller
         return (new ComplaintResource($model->load(['category', 'department', 'region', 'attachments', 'versions.notes'])))
             ->response();
     }
+
+    public function restoreVersion(
+        RestoreComplaintVersionRequest $request,
+        int $complaint,
+        int $version_number
+    ): JsonResponse {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $model = $this->complaintService->restoreComplaintVersion(
+            user: $user,
+            complaintId: $complaint,
+            versionNumber: $version_number,
+            rowVersion: (int) $data['row_version'],
+            note: $data['note'] ?? null,
+        );
+
+        return (new ComplaintResource(
+            $model->load(['category', 'department', 'region', 'attachments', 'versions.notes', 'locker'])
+        ))->response();
+    }
+
 
     public function meta(ComplaintMetaRequest $request): JsonResponse
     {

@@ -34,4 +34,12 @@ class ComplaintVersionRepository implements ComplaintVersionRepositoryInterface
             'note'         => $note,
         ]);
     }
+
+    public function findByComplaintAndNumber(int $complaintId, int $versionNumber): ?ComplaintVersion
+    {
+        return ComplaintVersion::query()
+            ->where('complaint_id', $complaintId)
+            ->where('version_number', $versionNumber)
+            ->first();
+    }
 }

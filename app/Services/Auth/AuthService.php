@@ -6,56 +6,35 @@ use App\Models\User;
 use App\Notifications\AccountLockedNotification;
 use App\Notifications\PasswordResetCodeNotification;
 use App\Notifications\VerifyEmailCodeNotification;
-use App\Repositories\User\UserRepositoryInterface;
-use App\Repositories\VerificationCode\VerificationCodeRepositoryInterface;
-use Illuminate\Support\Facades\DB;
+use App\Support\Aop\AopRunner;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
-class AuthService
+final class AuthService
 {
-    protected int $maxFailedAttempts = 5;
-    protected int $lockMinutes       = 10;
-
     public function __construct(
-        protected UserRepositoryInterface $users,
-        protected VerificationCodeRepositoryInterface $verificationCodes,
+        private AuthServiceCore $core,
+        private AopRunner $runner,
     ) {
     }
 
     public function registerCitizen(array $data): User
     {
-        [$user, $rawCode] = DB::transaction(function () use ($data) {
-            $user = $this->users->create([
-                'name'         => $data['name'],
-                'phone_number' => $data['phone_number'],
-                'email'        => $data['email'],
-                'password'     => $data['password'],
-            ]);
-
-            $user->assignRole('citizen');
-
-            $rawCode = $this->generateCode();
-
-            $this->verificationCodes->createForUser(
-                user: $user,
-                type: 'email_verification',
-                hashedCode: Hash::make($rawCode),
-                expiresAt: now()->addMinutes(60),
-            );
-
-            return [$user, $rawCode];
-        });
+        [$user, $rawCode] = $this->runner->run(
+            op: 'auth.register',
+            fn: fn () => $this->core->registerCitizenDb($data),
+            transactional: true,
+            context: ['email' => $data['email'] ?? null]
+        );
 
         $user->notify(new VerifyEmailCodeNotification($rawCode));
 
         return $user;
     }
 
-
     public function login(array $credentials): array
     {
-        $user = $this->users->findByEmail($credentials['email']);
+        $user = $this->core->users->findByEmail($credentials['email']);
 
         if ($user && $user->isLocked()) {
             $minutes = $user->locked_until->diffInMinutes(now());
@@ -66,24 +45,21 @@ class AuthService
         }
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
-
             if ($user) {
-                $user->failed_login_attempts = ($user->failed_login_attempts ?? 0) + 1;
+                $state = $this->runner->run(
+                    op: 'auth.login.fail',
+                    fn: fn () => $this->core->recordFailedLoginAttemptDb($user),
+                    transactional: true,
+                    context: ['user_id' => $user->id]
+                );
 
-                if ($user->failed_login_attempts >= $this->maxFailedAttempts) {
-                    $user->locked_until = now()->addMinutes($this->lockMinutes);
-                    $user->failed_login_attempts = 0;
-
-                    $this->users->save($user);
-
-                    $user->notify(new AccountLockedNotification($user->locked_until));
+                if ($state['locked']) {
+                    $user->notify(new AccountLockedNotification($state['locked_until']));
 
                     throw ValidationException::withMessages([
-                        'email' => [__('auth.account_locked', ['minutes' => $this->lockMinutes])],
+                        'email' => [__('auth.account_locked', ['minutes' => $this->core->lockMinutes])],
                     ]);
                 }
-
-                $this->users->save($user);
             }
 
             throw ValidationException::withMessages([
@@ -91,12 +67,12 @@ class AuthService
             ]);
         }
 
-        //if we reach this points then the login successed
-        if ($user->failed_login_attempts > 0 || $user->locked_until) {
-            $user->failed_login_attempts = 0;
-            $user->locked_until = null;
-            $this->users->save($user);
-        }
+        $this->runner->run(
+            op: 'auth.login.reset_state',
+            fn: fn () => $this->core->clearLoginFailureStateDb($user),
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
 
         if ($user->hasRole('citizen') && !$user->email_verified_at) {
             throw ValidationException::withMessages([
@@ -104,84 +80,51 @@ class AuthService
             ]);
         }
 
-        $token = $user->createToken('auth')->plainTextToken;
+        $token = $this->runner->run(
+            op: 'auth.token.issue',
+            fn: fn () => $this->core->issueTokenDb($user),
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
 
         return [
-            'user'  => $user,
+            'user'  => $user->fresh(),
             'token' => $token,
         ];
     }
 
-
     public function verifyEmail(User $user, string $code): User
     {
-        if ($user->email_verified_at) {
-            return $user;
-        }
-
-        $verificationCode = $this->verificationCodes
-            ->getLatestActiveCode($user, 'email_verification');
-
-        if (!$verificationCode || $verificationCode->isExpired()) {
-            throw ValidationException::withMessages([
-                'code' => [__('auth.no_valid_code')],
-            ]);
-        }
-
-        if (!Hash::check($code, $verificationCode->code)) {
-            throw ValidationException::withMessages([
-                'code' => [__('auth.invalid_code')],
-            ]);
-        }
-
-        DB::transaction(function () use ($user, $verificationCode) {
-            $this->verificationCodes->markAsUsed($verificationCode);
-
-            $user->email_verified_at = now();
-            $this->users->save($user);
-        });
-
-        return $user;
+        return $this->runner->run(
+            op: 'auth.verify_email',
+            fn: fn () => $this->core->verifyEmailDb($user, $code),
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
     }
 
     public function resendEmailVerification(User $user): void
     {
-        if ($user->email_verified_at) {
-            throw ValidationException::withMessages([
-                'email' => [__('auth.email_already_verified')],
-            ]);
-        }
-
-        $this->verificationCodes->invalidateActiveCodes($user, 'email_verification');
-
-        $rawCode = $this->generateCode();
-
-        $this->verificationCodes->createForUser(
-            user: $user,
-            type: 'email_verification',
-            hashedCode: Hash::make($rawCode),
-            expiresAt: now()->addMinutes(60),
+        $rawCode = $this->runner->run(
+            op: 'auth.resend_verify',
+            fn: fn () => $this->core->resendEmailVerificationDb($user),
+            transactional: true,
+            context: ['user_id' => $user->id]
         );
 
         $user->notify(new VerifyEmailCodeNotification($rawCode));
     }
 
-
     public function sendPasswordResetCode(string $email): void
     {
-        $user = $this->users->findByEmail($email);
+        $user = $this->core->users->findByEmail($email);
+        if (!$user) return;
 
-        if (!$user) {
-            return;
-        }
-
-        $rawCode = $this->generateCode();
-
-        $this->verificationCodes->createForUser(
-            user: $user,
-            type: 'password_reset',
-            hashedCode: Hash::make($rawCode),
-            expiresAt: now()->addMinutes(15),
+        $rawCode = $this->runner->run(
+            op: 'auth.password_reset.send_code',
+            fn: fn () => $this->core->sendPasswordResetCodeDb($user),
+            transactional: true,
+            context: ['user_id' => $user->id]
         );
 
         $user->notify(new PasswordResetCodeNotification($rawCode));
@@ -189,7 +132,7 @@ class AuthService
 
     public function resetPassword(string $email, string $code, string $newPassword): array
     {
-        $user = $this->users->findByEmail($email);
+        $user = $this->core->users->findByEmail($email);
 
         if (!$user) {
             throw ValidationException::withMessages([
@@ -197,47 +140,41 @@ class AuthService
             ]);
         }
 
-        $verificationCode = $this->verificationCodes
-            ->getLatestActiveCode($user, 'password_reset');
+        $this->runner->run(
+            op: 'auth.password_reset.reset',
+            fn: fn () => $this->core->resetPasswordDb($user, $code, $newPassword),
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
 
-        if (!$verificationCode || $verificationCode->isExpired() || !Hash::check($code, $verificationCode->code)) {
-            throw ValidationException::withMessages([
-                'code' => [__('auth.password_reset_invalid_code')],
-            ]);
-        }
-
-        DB::transaction(function () use ($user, $verificationCode, $newPassword) {
-            $this->verificationCodes->markAsUsed($verificationCode);
-
-            $user->password = Hash::make($newPassword);
-            $this->users->save($user);
-
-            $user->tokens()->delete();
-        });
-
-        $token = $user->createToken('auth')->plainTextToken;
+        $token = $this->runner->run(
+            op: 'auth.token.issue_after_reset',
+            fn: fn () => $this->core->issueTokenDb($user),
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
 
         return [
-            'user'  => $user,
+            'user'  => $user->fresh(),
             'token' => $token,
         ];
     }
 
     public function logout(User $user, bool $allDevices = false): void
     {
-        if ($allDevices) {
-            $user->tokens()->delete();
-            return;
-        }
+        $this->runner->run(
+            op: 'auth.logout',
+            fn: function () use ($user, $allDevices) {
+                if ($allDevices) {
+                    $user->tokens()->delete();
+                    return;
+                }
 
-        $token = $user->currentAccessToken();
-        if ($token) {
-            $token->delete();
-        }
-    }
-
-    protected function generateCode(): string
-    {
-        return (string) random_int(100000, 999999);
+                $token = $user->currentAccessToken();
+                if ($token) $token->delete();
+            },
+            transactional: true,
+            context: ['user_id' => $user->id]
+        );
     }
 }

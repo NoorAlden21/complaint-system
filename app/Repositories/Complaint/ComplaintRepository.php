@@ -61,6 +61,10 @@ class ComplaintRepository implements ComplaintRepositoryInterface
             $query->where('created_by', $user->id);
         }
 
+        if ($user->hasRole('employee')) {
+            $query->where('department_id', $user->department_id);
+        }
+
         return $query->find($id);
     }
 

@@ -2,55 +2,52 @@
 
 namespace App\Services\Backup;
 
-use App\Jobs\RunBackupJob;
 use App\Models\BackupLog;
-use App\Repositories\Backup\BackupLogRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Storage;
+use App\Support\Aop\AopRunner;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-class BackupService
+final class BackupService
 {
     public function __construct(
-        protected BackupLogRepositoryInterface $backups
+        private BackupServiceCore $core,
+        private AopRunner $runner
     ) {
     }
 
-    public function listBackups(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function listBackups(array $filters = [], int $perPage = 15)
     {
-        return $this->backups->paginate($filters, $perPage);
+        return $this->runner->run(
+            op: 'backup.list',
+            fn: fn () => $this->core->listBackups($filters, $perPage),
+            transactional: false
+        );
     }
 
     public function getLastSuccessful(): ?BackupLog
     {
-        return $this->backups->getLastSuccessful();
+        return $this->runner->run(
+            op: 'backup.last_success',
+            fn: fn () => $this->core->getLastSuccessful(),
+            transactional: false
+        );
     }
 
     public function downloadBackup(BackupLog $backupLog): StreamedResponse
     {
-        if ($backupLog->status !== 'success') {
-            abort(400, 'Cannot download a failed backup.');
-        }
-
-        if (!$backupLog->disk || !$backupLog->path) {
-            abort(404, 'Backup file information is missing.');
-        }
-
-        if (!Storage::disk($backupLog->disk)->exists($backupLog->path)) {
-            abort(404, 'Backup file not found on disk.');
-        }
-
-        $downloadName = sprintf(
-            '%s-%s.zip',
-            $backupLog->backup_name ?? 'backup',
-            $backupLog->finished_at?->format('Y-m-d_H-i-s') ?? $backupLog->id
+        return $this->runner->run(
+            op: 'backup.download',
+            fn: fn () => $this->core->downloadBackup($backupLog),
+            transactional: false,
+            context: ['backup_id' => $backupLog->id]
         );
-
-        return Storage::disk($backupLog->disk)->download($backupLog->path, $downloadName);
     }
 
     public function triggerBackup(): void
     {
-        RunBackupJob::dispatch();
+        $this->runner->run(
+            op: 'backup.trigger',
+            fn: fn () => $this->core->triggerBackup(),
+            transactional: false
+        );
     }
 }
